@@ -62,7 +62,7 @@
             padding: 5px;
             text-align: center;
             font-size: 10px;
-            position: relative;
+            position: relative; /* Set to relative for token positioning */
         }
 
         /* Property colors */
@@ -94,6 +94,7 @@
             align-items: center;
             font-weight: bold;
             font-size: 14px;
+            position: relative; /* Set to relative for token positioning */
         }
         
         /* Board layout for different positions */
@@ -149,16 +150,15 @@
             height: 20px;
             border-radius: 50%;
             border: 2px solid #fff;
-            transition: all 0.2s ease-in-out; /* Slower transition for step-by-step movement */
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
             z-index: 10;
         }
 
-        /* Specific player colors */
-        .player-0 { background-color: #3b82f6; top: 10px; left: 10px; }
-        .player-1 { background-color: #ef4444; top: 10px; left: 35px; }
-        .player-2 { background-color: #22c55e; top: 35px; left: 10px; }
-        .player-3 { background-color: #f59e0b; top: 35px; left: 35px; }
+        /* Specific player positions within a square */
+        .player-0 { background-color: #3b82f6; top: 5px; left: 5px; }
+        .player-1 { background-color: #ef4444; top: 5px; right: 5px; }
+        .player-2 { background-color: #22c55e; bottom: 5px; left: 5px; }
+        .player-3 { background-color: #f59e0b; bottom: 5px; right: 5px; }
 
         /* Central game info panel */
         .game-info {
@@ -371,12 +371,12 @@
     }
 
     function createPlayerTokens() {
+        const startSquare = document.querySelector(`[data-index="0"]`);
         players.forEach((player, index) => {
             let token = document.createElement('div');
             token.classList.add('player-token', `player-${index}`);
             token.id = `player-token-${index}`;
-            board.appendChild(token);
-            updatePlayerTokenPosition(index);
+            startSquare.appendChild(token);
         });
     }
 
@@ -408,21 +408,17 @@
         });
     }
 
-    function updatePlayerTokenPosition(playerIndex) {
-        const player = players[playerIndex];
+    /**
+     * Moves a player token to a new space on the board.
+     * @param {number} playerIndex - The index of the player.
+     * @param {number} newPosition - The new position index.
+     */
+    function movePlayerToken(playerIndex, newPosition) {
         const token = document.getElementById(`player-token-${playerIndex}`);
-        const propertyElement = document.querySelector(`[data-index="${player.position}"]`);
-
-        if (propertyElement && token) {
-            const propertyRect = propertyElement.getBoundingClientRect();
-            const boardRect = board.getBoundingClientRect();
-            const tokenStyle = window.getComputedStyle(token);
-
-            // Calculate new position based on the current property's location
-            let newLeft = propertyRect.left - boardRect.left + parseFloat(tokenStyle.left);
-            let newTop = propertyRect.top - boardRect.top + parseFloat(tokenStyle.top);
-
-            token.style.transform = `translate(${newLeft}px, ${newTop}px)`;
+        const newSquare = document.querySelector(`[data-index="${newPosition}"]`);
+        
+        if (newSquare && token) {
+            newSquare.appendChild(token);
         }
     }
 
@@ -441,6 +437,7 @@
         const player = players[playerIndex];
         // Move one step
         player.position = (player.position + 1) % boardPositions.length;
+        
         // If player passes GO, give them $200
         if (player.position === 0) {
             player.money += 200;
@@ -448,7 +445,8 @@
             updatePlayerPanels();
         }
         
-        updatePlayerTokenPosition(playerIndex);
+        // Move the token to the new position
+        movePlayerToken(playerIndex, player.position);
         
         // Wait a short time and then move the next step
         setTimeout(() => {
@@ -628,3 +626,4 @@
     window.onload = initGame;
 </script>
 </body>
+</html>
