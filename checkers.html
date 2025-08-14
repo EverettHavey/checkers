@@ -68,14 +68,20 @@
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
             text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
             font-weight: bold;
+            opacity: 1;
+        }
+        
+        .menu-btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
         }
 
-        .menu-btn:hover, .game-btn:hover, .color-btn:hover {
+        .menu-btn:hover:not(:disabled), .game-btn:hover, .color-btn:hover {
             transform: translateY(-3px);
             box-shadow: 0 6px 12px rgba(0, 0, 0, 0.5);
         }
 
-        .menu-btn:active, .game-btn:active, .color-btn:active {
+        .menu-btn:active:not(:disabled), .game-btn:active, .color-btn:active {
             transform: translateY(0);
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
         }
@@ -248,17 +254,17 @@
     <div id="app">
         <div id="main-menu" class="container">
             <h1>Checkers</h1>
-            <div class="message-box" id="menu-message">Choose your game mode.</div>
+            <div class="message-box" id="menu-message">Initializing Firebase...</div>
 
             <div class="color-selection">
                 <button class="color-btn black selected" data-color="black">Black</button>
                 <button class="color-btn red" data-color="red">Red</button>
             </div>
-            <button id="1-player-btn" class="menu-btn">1 Player (vs. Bot)</button>
-            <button id="2-player-btn" class="menu-btn">2 Players (Create Game)</button>
+            <button id="1-player-btn" class="menu-btn" disabled>1 Player (vs. Bot)</button>
+            <button id="2-player-btn" class="menu-btn" disabled>2 Players (Create Game)</button>
             <div class="input-group">
                 <input type="text" id="game-code-input" placeholder="Enter game code">
-                <button id="join-game-btn" class="menu-btn">Join Game</button>
+                <button id="join-game-btn" class="menu-btn" disabled>Join Game</button>
             </div>
         </div>
 
@@ -286,13 +292,14 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, query, where, getDocs, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Firebase variables and initialization
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
         let firebaseConfig = null;
         try {
-            // Safely parse the Firebase config string, or default to an empty object
             firebaseConfig = (typeof __firebase_config === 'string' && __firebase_config.length > 0)
                 ? JSON.parse(__firebase_config)
                 : {};
@@ -300,11 +307,10 @@
             console.error("Error parsing Firebase configuration:", e);
             firebaseConfig = {};
         }
-        
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
         let app, db, auth;
-        let userId;
+        let userId = null;
+        let isFirebaseReady = false;
 
         // Game constants and state variables
         const canvas = document.getElementById('gameCanvas');
@@ -315,15 +321,13 @@
         canvas.width = boardSize;
         canvas.height = boardSize;
         
-        // Define colors as JavaScript constants to avoid syntax error
         const boardLightColor = '#f5f5dc';
         const boardDarkColor = '#8b4513';
         const selectedPieceColor = '#2ecc71';
         const highlightMoveColor = 'rgba(52, 152, 219, 0.5)';
 
-
-        let gameMode = 'singleplayer'; // 'singleplayer' or 'multiplayer'
-        let myColor = 'black'; // My piece color
+        let gameMode = 'singleplayer';
+        let myColor = 'black';
         let currentTurn = 'black';
         let board = [];
         let selectedPiece = null;
@@ -337,6 +341,7 @@
         // UI elements
         const mainMenu = document.getElementById('main-menu');
         const gameBoard = document.getElementById('game-board');
+        const menuMessage = document.getElementById('menu-message');
         const gameStatus = document.getElementById('game-status');
         const gameCodeDisplay = document.getElementById('game-code-display');
         const waitingMessage = document.getElementById('waiting-message');
@@ -345,6 +350,7 @@
         const modalMessage = document.getElementById('modal-message');
         const modalOkBtn = document.getElementById('modal-ok-btn');
         const userInfoDisplay = document.getElementById('user-info');
+        const menuButtons = document.querySelectorAll('.menu-btn');
 
         // Helper functions
         const showModal = (title, message) => {
@@ -362,11 +368,12 @@
             gameStatus.className = 'message-box';
             if (isError) {
                 gameStatus.classList.add('error');
+            } else {
+                gameStatus.classList.add('success');
             }
         };
 
         const updateMenuMessage = (message, isError = false) => {
-            const menuMessage = document.getElementById('menu-message');
             menuMessage.textContent = message;
             menuMessage.className = 'message-box';
             if (isError) {
@@ -487,7 +494,6 @@
             const moves = [];
             let possibleJumps = [];
 
-            // Check for jumps
             const checkJump = (dRow, dCol) => {
                 const jumpRow = row + dRow;
                 const jumpCol = col + dCol;
@@ -502,7 +508,6 @@
                 }
             };
             
-            // Standard moves
             const checkMove = (dRow, dCol) => {
                  const newRow = row + dRow;
                  const newCol = col + dCol;
@@ -577,7 +582,6 @@
         };
 
         const makeMove = (move) => {
-            // Save the current board state for undo
             lastMove = {
                 board: JSON.parse(JSON.stringify(board)),
                 turn: currentTurn
@@ -587,18 +591,15 @@
             board[move.endRow][move.endCol] = piece;
             board[move.startRow][move.startCol] = null;
             
-            // Check for kinging
             if (!piece.isKing) {
                 if ((piece.color === 'black' && move.endRow === 0) || (piece.color === 'red' && move.endRow === 7)) {
                     piece.isKing = true;
                 }
             }
 
-            // Handle jump
             let moveMade = true;
             if (move.jumped) {
                 board[move.jumped.row][move.jumped.col] = null;
-                // Check for subsequent jumps
                 const nextJumps = getPossibleMoves(move.endRow, move.endCol).filter(m => m.jumped);
                 if (nextJumps.length > 0) {
                     selectedPiece = { row: move.endRow, col: move.endCol };
@@ -629,14 +630,15 @@
                         const jumps = allPossibleMoves.filter(m => m.jumped);
                         const move = jumps.length > 0 ? jumps[Math.floor(Math.random() * jumps.length)] : allPossibleMoves[Math.floor(Math.random() * allPossibleMoves.length)];
                         
-                        makeMove(move);
-                        // Recursive call if a jump was made and more jumps are possible
-                        if (selectedPiece) {
-                             makeBotMove();
-                        } else {
-                           checkWinCondition();
+                        if (move) {
+                            makeMove(move);
+                            if (selectedPiece) {
+                                makeBotMove();
+                            } else {
+                                checkWinCondition();
+                            }
                         }
-                    }, 1000); // Simulate bot "thinking"
+                    }, 1000);
                 }
             }
         };
@@ -644,13 +646,11 @@
         const undoMove = () => {
             if (lastMove) {
                 if (gameMode === 'multiplayer') {
-                    // Multiplayer undo: update Firestore
                     updateGameStateInFirestore({
                         board: lastMove.board,
                         turn: lastMove.turn
                     });
                 } else {
-                    // Single-player undo
                     board = lastMove.board;
                     currentTurn = lastMove.turn;
                     selectedPiece = null;
@@ -659,7 +659,6 @@
                     redraw();
                     updateStatus(`${currentTurn === 'black' ? 'Black' : 'Red'}'s turn. Move undone.`);
                     if (gameMode === 'singleplayer') {
-                        // If it's the bot's turn after undo, let it make a move
                         if (currentTurn === 'red') {
                             makeBotMove();
                         }
@@ -676,14 +675,13 @@
             }
 
             const rect = canvas.getBoundingClientRect();
-            const x = event.clientX - rect.left;
-            const y = event.clientY - rect.top;
+            const x = (event.clientX || event.touches[0].clientX) - rect.left;
+            const y = (event.clientY || event.touches[0].clientY) - rect.top;
             const col = Math.floor(x / squareSize);
             const row = Math.floor(y / squareSize);
 
             const piece = board[row][col];
             
-            // Check if a piece is being selected
             if (piece && piece.color === currentTurn) {
                 if (piece.color === myColor || gameMode === 'singleplayer') {
                     selectedPiece = { row, col };
@@ -702,7 +700,6 @@
                     updateStatus(`You can only move your own pieces (${myColor}).`, true);
                 }
             } else if (selectedPiece) {
-                // Check if a move is being made to a valid square
                 const move = validMoves.find(m => m.endRow === row && m.endCol === col);
                 if (move) {
                     const moveMade = makeMove(move);
@@ -731,14 +728,14 @@
         canvas.addEventListener('click', handleCanvasClick);
         canvas.addEventListener('touchstart', (e) => {
              e.preventDefault();
-             handleCanvasClick(e.touches[0]);
+             handleCanvasClick(e);
         }, { passive: false });
 
 
         // Firebase and Multiplayer Logic
         const setupFirebase = async () => {
             if (!firebaseConfig || Object.keys(firebaseConfig).length === 0) {
-                 showModal("Error", "Firebase configuration is not available.");
+                 updateMenuMessage("Firebase configuration is not available.", true);
                  return;
             }
             try {
@@ -746,33 +743,30 @@
                 auth = getAuth(app);
                 db = getFirestore(app);
 
-                // Sign in with the provided custom token, or anonymously if not available
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
+                const authPromise = initialAuthToken
+                    ? signInWithCustomToken(auth, initialAuthToken)
+                    : signInAnonymously(auth);
+                await authPromise;
+                
+                userId = auth.currentUser?.uid;
+                if (!userId) {
+                    throw new Error("Failed to get user ID after sign in.");
                 }
 
-                // Listen for auth state changes to get the user ID
-                onAuthStateChanged(auth, (user) => {
-                    if (user) {
-                        userId = user.uid;
-                        userInfoDisplay.textContent = `User ID: ${userId}`;
-                    } else {
-                        userId = null;
-                        userInfoDisplay.textContent = 'User ID: N/A';
-                    }
-                });
+                isFirebaseReady = true;
+                updateMenuMessage("Firebase connected. Choose your game mode.");
+                menuButtons.forEach(btn => btn.disabled = false);
+                userInfoDisplay.textContent = `User ID: ${userId}`;
 
             } catch (error) {
                 console.error("Firebase initialization or auth failed:", error);
-                showModal("Error", "Failed to connect to the game service. Please try again.");
+                updateMenuMessage("Error: Authentication failed. Please try again.", true);
             }
         };
 
         const createGame = async (color) => {
-            if (!userId) {
-                showModal("Error", "Authentication failed. Please try again.");
+            if (!isFirebaseReady) {
+                updateMenuMessage("Firebase is not ready. Please wait.", true);
                 return;
             }
             
@@ -804,7 +798,6 @@
                 gameCodeDisplay.style.display = 'block';
                 waitingMessage.style.display = 'block';
                 
-                // Start listening for opponent
                 onSnapshot(gameRef, (doc) => {
                     const gameData = doc.data();
                     if (gameData && gameData.status === 'active') {
@@ -823,8 +816,8 @@
         };
 
         const joinGame = async (code) => {
-            if (!userId) {
-                showModal("Error", "Authentication failed. Please try again.");
+            if (!isFirebaseReady) {
+                updateMenuMessage("Firebase is not ready. Please wait.", true);
                 return;
             }
             
@@ -961,8 +954,6 @@
 
         document.getElementById('exit-btn').addEventListener('click', () => {
             if (gameMode === 'multiplayer' && gameId) {
-                // Consider how to handle a player leaving a multiplayer game
-                // For simplicity, we'll just delete the game document
                 const gameRef = doc(db, `artifacts/${appId}/public/data/checkers_games`, gameId);
                 deleteDoc(gameRef).catch(console.error);
             }
