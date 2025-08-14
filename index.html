@@ -3,79 +3,254 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Checkers Game - Main Menu</title>
+    <title>Minigames Plaza</title>
+    <!-- Tailwind CSS CDN for easy styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome for game icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Font: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
-
+        /* Custom styles */
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f0f0f0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            flex-direction: column;
-            color: #333;
+            background-color: #f0f4f8; /* A soft, modern background */
         }
-
-        .container {
-            text-align: center;
-            background-color: #ffffff;
-            padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            max-width: 90%;
-            width: 400px;
+        .game-card {
+            transition: transform 0.2s, box-shadow 0.2s;
         }
-
-        h1 {
-            color: #4CAF50;
-            margin-bottom: 30px;
+        .game-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
         }
-
-        .button-group {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            margin-top: 20px;
+        .message-box {
+            animation: fadeInOut 4s ease-in-out forwards;
         }
-
-        .action-button {
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            font-size: 1.2em;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background-color 0.3s, transform 0.1s;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translateY(20px); }
+            10% { opacity: 1; transform: translateY(0); }
+            90% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(20px); }
         }
-
-        .action-button:hover {
-            background-color: #388E3C;
-        }
-
-        .action-button:active {
-            transform: scale(0.98);
+        .hover-lift:hover {
+            transform: translateY(-3px);
         }
     </style>
 </head>
-<body>
-    <div class="container">
-        <h1>Checkers Game</h1>
-        <div class="button-group">
-            <button class="action-button" onclick="startGame('single')">1 Player (vs. Bot)</button>
-            <button class="action-button" onclick="startGame('multi')">2 Players (Online)</button>
+<body class="antialiased text-gray-800">
+
+    <!-- Main container for the entire application -->
+    <div class="flex items-center justify-center min-h-screen p-4">
+        
+        <!-- Minigames Plaza main card/container -->
+        <div class="bg-white p-8 md:p-12 rounded-3xl shadow-2xl max-w-5xl w-full flex flex-col items-center space-y-8">
+            
+            <!-- Header section -->
+            <div class="text-center">
+                <h1 class="text-4xl md:text-6xl font-extrabold text-blue-600 mb-2 leading-tight tracking-tighter">Minigames Plaza</h1>
+                <p class="text-xl md:text-2xl text-gray-500 font-semibold">Fun for everyone!</p>
+            </div>
+            
+            <!-- Minigames grid -->
+            <div id="games-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
+                
+                <!-- Game Card Template -->
+                <!-- Checkers -->
+                <button class="game-card bg-gray-50 p-6 rounded-2xl border border-gray-200 cursor-pointer text-left focus:outline-none focus:ring-4 focus:ring-blue-200" data-game="Checkers">
+                    <div class="flex items-center space-x-4">
+                        <div class="flex-shrink-0 w-12 h-12 flex items-center justify-center bg-purple-100 text-purple-600 rounded-full text-2xl">
+                            <i class="fas fa-chess-board"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-lg text-gray-900">Checkers</h3>
+                            <p class="text-sm text-gray-500 mt-1">Capture your opponent's pieces by jumping over them.</p>
+                        </div>
+                    </div>
+                </button>
+
+                <!-- Tic-Tac-Toe -->
+                <button class="game-card bg-gray-50 p-6 rounded-2xl border border-gray-200 cursor-pointer text-left focus:outline-none focus:ring-4 focus:ring-blue-200" data-game="Tic-Tac-Toe">
+                    <div class="flex items-center space-x-4">
+                        <div class="flex-shrink-0 w-12 h-12 flex items-center justify-center bg-green-100 text-green-600 rounded-full text-2xl">
+                            <i class="fas fa-times"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-lg text-gray-900">Tic-Tac-Toe</h3>
+                            <p class="text-sm text-gray-500 mt-1">Get three of your marks in a row to win the grid.</p>
+                        </div>
+                    </div>
+                </button>
+
+                <!-- Four-in-a-Row -->
+                <button class="game-card bg-gray-50 p-6 rounded-2xl border border-gray-200 cursor-pointer text-left focus:outline-none focus:ring-4 focus:ring-blue-200" data-game="Four-in-a-Row">
+                    <div class="flex items-center space-x-4">
+                        <div class="flex-shrink-0 w-12 h-12 flex items-center justify-center bg-yellow-100 text-yellow-600 rounded-full text-2xl">
+                            <i class="fas fa-circle"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-lg text-gray-900">Four-in-a-Row</h3>
+                            <p class="text-sm text-gray-500 mt-1">Drop discs to connect four in a line, vertically or horizontally.</p>
+                        </div>
+                    </div>
+                </button>
+
+                <!-- Connect the Dots -->
+                <button class="game-card bg-gray-50 p-6 rounded-2xl border border-gray-200 cursor-pointer text-left focus:outline-none focus:ring-4 focus:ring-blue-200" data-game="Connect the Dots">
+                    <div class="flex items-center space-x-4">
+                        <div class="flex-shrink-0 w-12 h-12 flex items-center justify-center bg-pink-100 text-pink-600 rounded-full text-2xl">
+                            <i class="fas fa-dot-circle"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-lg text-gray-900">Connect the Dots</h3>
+                            <p class="text-sm text-gray-500 mt-1">Draw lines to connect dots and complete squares.</p>
+                        </div>
+                    </div>
+                </button>
+                
+                <!-- Hangman -->
+                <button class="game-card bg-gray-50 p-6 rounded-2xl border border-gray-200 cursor-pointer text-left focus:outline-none focus:ring-4 focus:ring-blue-200" data-game="Hangman">
+                    <div class="flex items-center space-x-4">
+                        <div class="flex-shrink-0 w-12 h-12 flex items-center justify-center bg-red-100 text-red-600 rounded-full text-2xl">
+                            <i class="fas fa-gavel"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-lg text-gray-900">Hangman</h3>
+                            <p class="text-sm text-gray-500 mt-1">Guess the hidden word, one letter at a time, to save the hangman.</p>
+                        </div>
+                    </div>
+                </button>
+                
+            </div>
+            
+            <!-- Bottom buttons section -->
+            <div class="flex flex-col sm:flex-row items-center justify-center w-full mt-8 space-y-4 sm:space-y-0 sm:space-x-4">
+                <button id="options-btn" class="hover-lift w-full sm:w-auto px-6 py-3 rounded-xl bg-gray-100 text-gray-700 font-semibold shadow-inner border border-gray-200 transition-colors duration-200 hover:bg-gray-200">
+                    <i class="fas fa-cog mr-2"></i> Options
+                </button>
+                <button id="credits-btn" class="hover-lift w-full sm:w-auto px-6 py-3 rounded-xl bg-gray-100 text-gray-700 font-semibold shadow-inner border border-gray-200 transition-colors duration-200 hover:bg-gray-200">
+                    <i class="fas fa-info-circle mr-2"></i> Credits
+                </button>
+                <button id="profile-btn" class="hover-lift w-full sm:w-auto px-6 py-3 rounded-xl bg-gray-100 text-gray-700 font-semibold shadow-inner border border-gray-200 transition-colors duration-200 hover:bg-gray-200">
+                    <i class="fas fa-user-circle mr-2"></i> Player Profiles
+                </button>
+            </div>
+
+            <!-- User ID and info section (for collaborative features) -->
+            <div class="w-full text-center mt-6 p-4 bg-gray-100 rounded-lg text-sm text-gray-600">
+                <p>Your unique Player ID: <span id="user-id" class="font-mono text-gray-800 cursor-pointer select-all font-semibold" title="Click to copy ID">Loading...</span></p>
+            </div>
+            
         </div>
+
+        <!-- Floating message box -->
+        <div id="message-box" class="absolute bottom-8 right-8 p-4 bg-blue-500 text-white rounded-lg shadow-lg hidden">
+            Message goes here.
+        </div>
+        
     </div>
 
-    <script>
-        function startGame(mode) {
-            localStorage.setItem('gameMode', mode);
-            window.location.href = 'game.html';
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebase configuration and initialization
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Global variables provided by the Canvas environment
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        let userId = 'anonymous'; // Default user ID
+
+        // Function to show a temporary message
+        function showMessage(text) {
+            const messageBox = document.getElementById('message-box');
+            messageBox.textContent = text;
+            messageBox.classList.remove('hidden');
+            setTimeout(() => {
+                messageBox.classList.add('hidden');
+            }, 4000);
         }
+
+        // Handle authentication state changes and display user ID
+        onAuthStateChanged(auth, async (user) => {
+            const userIdElement = document.getElementById('user-id');
+            if (user) {
+                userId = user.uid;
+                userIdElement.textContent = userId;
+                userIdElement.title = `Click to copy ID: ${userId}`;
+                showMessage(`Welcome, your unique Player ID has been set.`);
+            } else {
+                try {
+                    // Sign in with the provided custom token or anonymously
+                    if (initialAuthToken) {
+                        await signInWithCustomToken(auth, initialAuthToken);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                } catch (error) {
+                    console.error("Firebase Auth Error:", error);
+                    showMessage("Error logging in. Please check the console.");
+                }
+            }
+        });
+
+        // Event listeners for game cards
+        document.querySelectorAll('.game-card').forEach(button => {
+            button.addEventListener('click', () => {
+                const gameName = button.dataset.game;
+                showMessage(`Starting ${gameName}...`);
+                // In a real app, you would navigate to the game page here.
+            });
+        });
+
+        // Event listeners for bottom buttons
+        document.getElementById('options-btn').addEventListener('click', () => {
+            showMessage('Opening Options...');
+        });
+
+        document.getElementById('credits-btn').addEventListener('click', () => {
+            showMessage('Displaying Credits...');
+        });
+
+        document.getElementById('profile-btn').addEventListener('click', () => {
+            showMessage('Opening Player Profiles...');
+        });
+
+        // Event listener to copy the user ID to clipboard
+        document.getElementById('user-id').addEventListener('click', () => {
+            const userIdElement = document.getElementById('user-id');
+            const idToCopy = userIdElement.textContent;
+            
+            // Fallback for document.execCommand('copy') in case navigator.clipboard is not available
+            const textarea = document.createElement('textarea');
+            textarea.value = idToCopy;
+            textarea.style.position = 'fixed'; // Avoids scrolling to the bottom
+            document.body.appendChild(textarea);
+            textarea.focus();
+            textarea.select();
+            
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    showMessage('Player ID copied to clipboard!');
+                } else {
+                    showMessage('Failed to copy ID. Please select and copy manually.');
+                }
+            } catch (err) {
+                console.error('Copy to clipboard failed:', err);
+                showMessage('Failed to copy ID. Please select and copy manually.');
+            }
+            document.body.removeChild(textarea);
+        });
+
     </script>
 </body>
 </html>
