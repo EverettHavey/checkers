@@ -7,9 +7,10 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
 
+        /* Base styling for the entire page */
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f0f0f0;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -17,23 +18,43 @@
             margin: 0;
             flex-direction: column;
             color: #333;
-        }
-
-        .container {
             text-align: center;
+        }
+
+        /* Main container for the game and menu */
+        .container {
             background-color: #ffffff;
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            max-width: 90%;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            max-width: 95%;
             width: 500px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        #game-container, #main-menu {
+            display: none;
+            width: 100%;
+        }
+        
+        #main-menu.visible, #game-container.visible {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
+        /* Title styling */
         h1 {
-            color: #4CAF50;
-            margin-bottom: 20px;
+            color: #2c3e50;
+            margin: 0;
+            font-size: 2.5rem;
+            font-weight: 700;
         }
 
+        /* Game board and squares */
         #game-board {
             display: grid;
             grid-template-columns: repeat(8, 1fr);
@@ -41,8 +62,9 @@
             width: 100%;
             max-width: 400px;
             margin: 20px auto;
-            border: 2px solid #5d4037;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border: 5px solid #4a2c2a;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
             aspect-ratio: 1 / 1;
         }
 
@@ -57,160 +79,182 @@
             position: relative;
         }
 
+        /* Dark squares with a wood texture gradient */
+        .square.dark {
+            background: linear-gradient(to bottom right, #5d4037, #4a2c2a);
+        }
+
+        /* Light squares with a clean cream color */
         .square.light {
             background-color: #F8E8C0;
         }
 
-        .square.dark {
-            background-color: #5d4037;
-        }
-
+        /* Pieces with a 3D-like spherical look */
         .piece {
             width: 80%;
             height: 80%;
             border-radius: 50%;
-            background-color: #333;
-            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.3), 0 5px 10px rgba(0, 0, 0, 0.2);
             display: flex;
             justify-content: center;
             align-items: center;
             font-weight: bold;
-            color: white;
+            color: #fff;
             transition: transform 0.2s ease-in-out;
             user-select: none;
+            border: 2px solid rgba(255, 255, 255, 0.2);
         }
 
         .piece.red {
-            background-color: #D32F2F;
+            background: radial-gradient(circle at top left, #ef5350, #d32f2f);
         }
 
         .piece.black {
-            background-color: #333333;
+            background: radial-gradient(circle at top left, #5a5a5a, #333333);
         }
 
+        /* King piece styling */
         .king::after {
             content: '★';
-            font-size: 2em;
+            font-size: 2.5em;
             color: gold;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
         }
 
+        /* Selected piece visual feedback */
         .piece.selected {
-            border: 3px solid #1a237e;
-            box-shadow: 0 0 10px #1a237e;
-            transform: scale(1.1);
+            transform: scale(1.15) translateY(-5px);
+            box-shadow: 0 0 15px #2196f3, 0 5px 20px rgba(0, 0, 0, 0.3);
+            border: 3px solid #2196f3;
         }
 
+        /* Highlighted squares for valid moves */
         .square.highlight {
-            background-color: #4CAF50 !important;
-            border: 2px solid #388E3C;
+            background-color: #81c784 !important;
+            box-shadow: inset 0 0 10px #4caf50;
             border-radius: 8px;
         }
 
+        /* Message box pop-up */
         .message-box {
             position: fixed;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background-color: #2196F3;
+            background-color: rgba(33, 150, 243, 0.95);
             color: white;
-            padding: 20px 40px;
-            border-radius: 12px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            padding: 30px 50px;
+            border-radius: 16px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
+            backdrop-filter: blur(5px);
             z-index: 1000;
             display: none;
             flex-direction: column;
-            gap: 10px;
+            gap: 15px;
             align-items: center;
+            font-size: 1.2rem;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
         }
 
         .message-box.show {
             display: flex;
         }
 
-        .player-turn {
-            font-size: 1.2em;
-            font-weight: bold;
-            margin-top: 10px;
+        /* Player turn and info display */
+        .info-display {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            background-color: #f7f9fc;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
         }
         
+        .player-turn, #turn-display, #timer-display {
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+
+        .timer-display {
+            color: #d32f2f;
+        }
+        
+        /* User ID text */
         .user-id-display {
-            font-size: 0.8em;
+            font-size: 0.8rem;
             color: #666;
             margin-top: 10px;
             word-break: break-all;
         }
 
-        .button-group {
+        /* Button styling */
+        .button-group, .game-buttons {
             display: flex;
             justify-content: center;
             gap: 15px;
-            margin-top: 20px;
+            flex-wrap: wrap;
         }
 
         .action-button {
             background-color: #4CAF50;
+            background: linear-gradient(45deg, #4CAF50, #8bc34a);
             color: white;
             border: none;
-            padding: 12px 24px;
-            font-size: 1em;
-            border-radius: 8px;
+            padding: 12px 28px;
+            font-size: 1.1rem;
+            border-radius: 25px;
             cursor: pointer;
-            transition: background-color 0.3s, transform 0.1s;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 10px rgba(76, 175, 80, 0.3);
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 1px;
         }
 
         .action-button:hover {
-            background-color: #388E3C;
+            background: linear-gradient(45deg, #388E3C, #689f38);
+            box-shadow: 0 6px 15px rgba(56, 142, 60, 0.4);
+            transform: translateY(-2px);
         }
 
         .action-button:active {
             transform: scale(0.98);
-        }
-
-        .info-display {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 20px;
-            font-size: 1.1em;
-            font-weight: bold;
-        }
-
-        .timer-display {
-            color: #D32F2F;
-        }
-        
-        .game-buttons {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            margin-top: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
         }
         
         .game-buttons button {
             width: 100%;
+            max-width: 250px;
         }
-
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Checkers</h1>
+        <div id="main-menu" class="visible">
+            <p>Choose your game mode:</p>
+            <div class="game-buttons">
+                <button class="action-button" id="single-player-btn">Single Player</button>
+                <button class="action-button" id="multi-player-btn">Multi Player</button>
+            </div>
+        </div>
         <div id="game-container">
             <div id="game-board"></div>
+            <div class="info-display">
+                <span id="turn-display"></span>
+                <span id="timer-display" class="timer-display"></span>
+            </div>
+            <div class="button-group">
+                <button class="action-button" onclick="backToMenu()">Back to Menu</button>
+            </div>
+            <div class="user-id-display" id="user-id-display"></div>
         </div>
-        <div class="info-display">
-            <span id="turn-display"></span>
-            <span id="timer-display" class="timer-display"></span>
-        </div>
-        <div class="button-group">
-            <button class="action-button" onclick="window.location.href = 'index.html'">Back to Menu</button>
-        </div>
-        <div class="user-id-display" id="user-id-display"></div>
     </div>
     
     <div class="message-box" id="message-box"></div>
@@ -238,11 +282,14 @@
         let gameId = null;
         let playerColor = null; // 'black' or 'red' for the current user
         let opponentUserId = null;
+        let canEndTurn = true;
 
         // Firebase instances
         let app, db, auth;
 
         // Game UI elements
+        const mainMenu = document.getElementById('main-menu');
+        const gameContainer = document.getElementById('game-container');
         const boardElement = document.getElementById('game-board');
         const userIdDisplay = document.getElementById('user-id-display');
         const messageBox = document.getElementById('message-box');
@@ -260,14 +307,6 @@
                             userId = user.uid;
                             console.log("Authenticated with user ID:", userId);
                             userIdDisplay.textContent = `Your ID: ${userId}`;
-                            // The user is authenticated, now start the game based on local storage
-                            const savedGameMode = localStorage.getItem('gameMode');
-                            if (savedGameMode) {
-                                startGame(savedGameMode);
-                            } else {
-                                // If no game mode is set, go back to the menu
-                                window.location.href = 'index.html';
-                            }
                         } else {
                             // If not authenticated, sign in with the provided custom token or anonymously.
                             if (initialAuthToken) {
@@ -337,7 +376,10 @@
 
         // Start the game
         async function startGame(mode) {
+            mainMenu.classList.remove('visible');
+            gameContainer.classList.add('visible');
             isGameOver = false;
+            canEndTurn = true;
             gameMode = mode;
             createBoard();
             renderBoard();
@@ -354,6 +396,7 @@
                 }
                 showMessage("Looking for an opponent...");
                 await joinOrCreateGame();
+                console.log(`Multiplayer game started. Game ID: ${gameId}, Player Color: ${playerColor}`);
             }
         }
         
@@ -442,7 +485,7 @@
         
         // Logic for handling a square click
         async function handleSquareClick(row, col) {
-            if (isGameOver || (gameMode === 'multi' && currentPlayer !== playerColor)) {
+            if (isGameOver || (gameMode === 'multi' && currentPlayer !== playerColor) || !canEndTurn) {
                 return;
             }
 
@@ -450,9 +493,25 @@
             
             // If a piece is selected and the new click is a valid move
             if (selectedPiece && canMove(selectedPiece.row, selectedPiece.col, row, col)) {
-                movePiece(selectedPiece.row, selectedPiece.col, row, col);
+                const isJump = movePiece(selectedPiece.row, selectedPiece.col, row, col);
+                
+                // If a jump was made, check for further jumps from the new position
+                if (isJump) {
+                    selectedPiece = { row, col, ...board[row][col] };
+                    const nextJumps = getAllPossibleJumps(row, col);
+                    if (nextJumps.length > 0) {
+                        // Keep the turn active and highlight next jumps
+                        canEndTurn = false;
+                        clearHighlights();
+                        highlightMoves(nextJumps);
+                        return; // Exit without switching turn
+                    }
+                }
+
+                // If no jump was made or no more jumps are available, end the turn
                 selectedPiece = null;
                 clearHighlights();
+                canEndTurn = true;
                 
                 // End the game if a player wins
                 if(checkWinCondition()){
@@ -479,6 +538,60 @@
             });
         }
         
+        // Get all possible moves for a piece (single moves and jumps)
+        function getAllPossibleMoves(row, col) {
+            const moves = [];
+            const piece = board[row][col];
+            if (!piece) return moves;
+
+            const directions = getMoveDirections(piece);
+
+            for (const [dr, dc] of directions) {
+                // Check for single moves
+                const newRow = row + dr;
+                const newCol = col + dc;
+                if (isValidPosition(newRow, newCol) && !board[newRow][newCol]) {
+                    moves.push({ startRow: row, startCol: col, endRow: newRow, endCol: newCol });
+                }
+                
+                // Check for jump moves
+                const jumpRow = row + 2 * dr;
+                const jumpCol = col + 2 * dc;
+                if (isValidPosition(jumpRow, jumpCol) && !board[jumpRow][jumpCol] && board[newRow][newCol] && board[newRow][newCol].color !== piece.color) {
+                    moves.push({ startRow: row, startCol: col, endRow: jumpRow, endCol: jumpCol });
+                }
+            }
+            return moves;
+        }
+
+        // Get all possible jump moves for a piece
+        function getAllPossibleJumps(row, col) {
+            const jumps = [];
+            const piece = board[row][col];
+            if (!piece) return jumps;
+
+            const directions = getMoveDirections(piece);
+
+            for (const [dr, dc] of directions) {
+                const newRow = row + dr;
+                const newCol = col + dc;
+                const jumpRow = row + 2 * dr;
+                const jumpCol = col + 2 * dc;
+
+                if (isValidPosition(jumpRow, jumpCol) && !board[jumpRow][jumpCol] && board[newRow][newCol] && board[newRow][newCol].color !== piece.color) {
+                    jumps.push({ startRow: row, startCol: col, endRow: jumpRow, endCol: jumpCol });
+                }
+            }
+            return jumps;
+        }
+
+        // Highlight a list of moves on the board
+        function highlightMoves(moves) {
+            moves.forEach(move => {
+                document.querySelector(`[data-row="${move.endRow}"][data-col="${move.endCol}"]`).classList.add('highlight');
+            });
+        }
+
         // Highlight valid moves for a selected piece
         function highlightValidMoves(row, col) {
             const piece = board[row][col];
@@ -486,23 +599,9 @@
             if (pieceElement) {
                 pieceElement.classList.add('selected');
             }
-            
-            const directions = getMoveDirections(piece);
-            for (const [dr, dc] of directions) {
-                // Check for single moves
-                const newRow = row + dr;
-                const newCol = col + dc;
-                if (isValidPosition(newRow, newCol) && !board[newRow][newCol]) {
-                    document.querySelector(`[data-row="${newRow}"][data-col="${newCol}"]`).classList.add('highlight');
-                }
-                
-                // Check for jump moves
-                const jumpRow = row + 2 * dr;
-                const jumpCol = col + 2 * dc;
-                if (isValidPosition(jumpRow, jumpCol) && !board[jumpRow][jumpCol] && board[newRow][newCol] && board[newRow][newCol].color !== piece.color) {
-                    document.querySelector(`[data-row="${jumpRow}"][data-col="${jumpCol}"]`).classList.add('highlight');
-                }
-            }
+
+            const moves = getAllPossibleMoves(row, col);
+            highlightMoves(moves);
         }
         
         // Get valid move directions for a piece
@@ -550,12 +649,13 @@
             return false;
         }
 
-        // Execute a move on the board
+        // Execute a move on the board and return true if it was a jump
         function movePiece(startRow, startCol, endRow, endCol) {
             const piece = board[startRow][startCol];
             board[endRow][endCol] = piece;
             board[startRow][startCol] = null;
             
+            let isJump = false;
             // Check for jump and remove jumped piece
             const rowDiff = endRow - startRow;
             const colDiff = Math.abs(endCol - startCol);
@@ -563,6 +663,7 @@
                 const jumpedRow = startRow + rowDiff / 2;
                 const jumpedCol = startCol + (endCol - startCol) / 2;
                 board[jumpedRow][jumpedCol] = null;
+                isJump = true;
             }
 
             // Check for kinging
@@ -571,6 +672,7 @@
             }
             
             renderBoard();
+            return isJump;
         }
 
         // Switch the turn to the other player
@@ -626,7 +728,7 @@
             restartBtn.textContent = 'Play Again';
             restartBtn.className = 'action-button';
             restartBtn.onclick = () => {
-                window.location.href = 'index.html';
+                backToMenu();
             };
             messageBox.appendChild(restartBtn);
             messageBox.classList.add('show');
@@ -634,43 +736,53 @@
 
         // --- Bot Logic (Simple AI) ---
         function botMove() {
-            let possibleMoves = [];
+            console.log("Bot's turn. Looking for moves...");
+            let allMoves = [];
+            let jumpMoves = [];
             for (let i = 0; i < 8; i++) {
                 for (let j = 0; j < 8; j++) {
                     const piece = board[i][j];
                     if (piece && piece.color === 'red') {
-                        const directions = getMoveDirections(piece);
-                        for (const [dr, dc] of directions) {
-                            // Check for jump moves
-                            const jumpRow = i + 2 * dr;
-                            const jumpCol = j + 2 * dc;
-                            if (canMove(i, j, jumpRow, jumpCol)) {
-                                possibleMoves.push({ startRow: i, startCol: j, endRow: jumpRow, endCol: jumpCol, isJump: true });
-                            }
-                            // Check for single moves
-                            const newRow = i + dr;
-                            const newCol = j + dc;
-                            if (canMove(i, j, newRow, newCol) && !board[newRow][newCol] && !possibleMoves.some(m => m.isJump)) {
-                                possibleMoves.push({ startRow: i, startCol: j, endRow: newRow, endCol: newCol });
-                            }
-                        }
+                        allMoves = allMoves.concat(getAllPossibleMoves(i, j));
+                        jumpMoves = jumpMoves.concat(getAllPossibleJumps(i,j));
                     }
                 }
             }
+            
+            let move;
+            if (jumpMoves.length > 0) {
+                // If jumps are available, the bot prioritizes them
+                move = jumpMoves[Math.floor(Math.random() * jumpMoves.length)];
+                const jumped = movePiece(move.startRow, move.startCol, move.endRow, move.endCol);
 
-            if (possibleMoves.length > 0) {
-                const move = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
-                movePiece(move.startRow, move.startCol, move.endRow, move.endCol);
-                
-                if (checkWinCondition()) {
-                    endGame();
-                } else {
-                    switchTurn();
+                // Check for subsequent jumps
+                if (jumped) {
+                    let currentPosition = { row: move.endRow, col: move.endCol };
+                    let nextJumps = getAllPossibleJumps(currentPosition.row, currentPosition.col);
+                    while (nextJumps.length > 0) {
+                        const nextMove = nextJumps[Math.floor(Math.random() * nextJumps.length)];
+                        movePiece(currentPosition.row, currentPosition.col, nextMove.endRow, nextMove.endCol);
+                        currentPosition = { row: nextMove.endRow, col: nextMove.endCol };
+                        nextJumps = getAllPossibleJumps(currentPosition.row, currentPosition.col);
+                    }
                 }
+            } else if (allMoves.length > 0) {
+                // Otherwise, make a random normal move
+                move = allMoves[Math.floor(Math.random() * allMoves.length)];
+                movePiece(move.startRow, move.startCol, move.endRow, move.endCol);
             } else {
+                console.log("Bot has no moves. Ending game.");
                 endGame();
+                return;
+            }
+
+            if (checkWinCondition()) {
+                endGame();
+            } else {
+                switchTurn();
             }
         }
+
 
         // --- Helper Functions ---
         function isValidPosition(row, col) {
@@ -691,9 +803,32 @@
             }, 1000);
         }
 
+        // Back to Menu function
+        function backToMenu() {
+            localStorage.removeItem('gameMode');
+            window.location.reload();
+        }
+
+        // --- Event Listeners for menu buttons ---
+        document.getElementById('single-player-btn').addEventListener('click', () => {
+            localStorage.setItem('gameMode', 'single');
+            startGame('single');
+        });
+
+        document.getElementById('multi-player-btn').addEventListener('click', () => {
+            localStorage.setItem('gameMode', 'multi');
+            startGame('multi');
+        });
+
         // Initial setup
         window.onload = async () => {
             await initializeFirebase();
+            const savedGameMode = localStorage.getItem('gameMode');
+            if (savedGameMode) {
+                startGame(savedGameMode);
+            } else {
+                mainMenu.classList.add('visible');
+            }
         };
 
     </script>
