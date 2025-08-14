@@ -39,13 +39,20 @@
         const waitingScreen = document.getElementById('waiting-screen');
         const userIdDisplay = document.getElementById('user-id');
         const usernameInput = document.getElementById('username-input');
-        const otherUsernameInput = document.getElementById('other-username-input');
+        const otherUserIdInput = document.getElementById('other-user-id-input');
         const turnDisplay = document.getElementById('turn-display');
         const undoButton = document.getElementById('undo-button');
 
         // --- Firebase Initialization and Authentication ---
         async function initFirebase() {
             try {
+                // Check if firebaseConfig is not an empty object
+                if (Object.keys(firebaseConfig).length === 0) {
+                    console.error("Firebase Configuration Error: firebaseConfig is empty or malformed.");
+                    showMessage("Failed to connect to the database. Firebase configuration is missing or invalid.", 0);
+                    return;
+                }
+
                 app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
@@ -108,7 +115,8 @@
 
         function updateUsernameDisplay() {
             username = usernameInput.value.trim() || 'Player';
-            userIdDisplay.innerHTML = `Your username: **${username}**<br>Your user ID: ${userId}`;
+            // Display both the user's chosen name and their unique ID
+            userIdDisplay.innerHTML = `Your username: **${username}**<br>Your User ID: ${userId}`;
         }
         
         usernameInput.addEventListener('input', updateUsernameDisplay);
@@ -174,16 +182,17 @@
             updateUsernameDisplay();
             isBotGame = false;
             undoButton.style.display = 'none';
-            const otherUsername = otherUsernameInput.value.trim();
-            if (!otherUsername) {
-                showMessage("Please enter a username to join.", 3000);
+            const otherUserId = otherUserIdInput.value.trim();
+            if (!otherUserId) {
+                showMessage("Please enter a User ID to join.", 3000);
                 return;
             }
             
-            showWaitingScreen(`Searching for a game created by "${otherUsername}"...`);
+            showWaitingScreen(`Searching for a game created by User ID: "${otherUserId}"...`);
             try {
                 const gamesRef = collection(db, `artifacts/${appId}/public/data/games`);
-                const q = query(gamesRef, where("player1Name", "==", otherUsername), where("status", "==", "waiting"));
+                // Query for a game created by the other user's ID
+                const q = query(gamesRef, where("player1", "==", otherUserId), where("status", "==", "waiting"));
                 const querySnapshot = await getDocs(q);
 
                 if (!querySnapshot.empty) {
@@ -200,11 +209,11 @@
                     playerColor = 'red';
                     listenToGameChanges();
                 } else {
-                    showMessage("No available game found with that username.", 5000);
+                    showMessage("No available game found with that User ID.", 5000);
                 }
             } catch (e) {
                 console.error("Error joining game:", e);
-                showMessage("Failed to join game. Please check the username.", 5000);
+                showMessage("Failed to join game. Please check the User ID.", 5000);
             } finally {
                 hideWaitingScreen();
             }
@@ -831,7 +840,7 @@
             <div class="menu-buttons">
                 <button class="action-button" onclick="startNewGame()">Start a New Game (as Black)</button>
                 <div class="input-group">
-                    <input type="text" id="other-username-input" placeholder="Enter your friend's username">
+                    <input type="text" id="other-user-id-input" placeholder="Enter your friend's User ID">
                     <button class="action-button" onclick="joinGame()">Join Game (as Red)</button>
                 </div>
                 <button class="action-button" onclick="startBotGame()">Play against Bot</button>
@@ -850,11 +859,3 @@
             </div>
         </div>
     </div>
-    
-    <div class="message-box" id="message-box"></div>
-    <div class="message-box" id="waiting-screen">
-        <p id="waiting-message">Waiting for another player...</p>
-    </div>
-
-</body>
-</html>
