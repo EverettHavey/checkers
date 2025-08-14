@@ -108,7 +108,7 @@
         // Update the username display
         function updateUsernameDisplay() {
             username = usernameInput.value.trim() || 'Player';
-            userIdDisplay.textContent = `Your username is: ${username}`;
+            userIdDisplay.innerHTML = `Your username: **${username}**<br>Your user ID: ${userId}`;
         }
         
         usernameInput.addEventListener('input', updateUsernameDisplay);
@@ -921,11 +921,11 @@
             box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
         }
         
-        .player-turn, #turn-display, #user-id {
+        .player-turn, #turn-display {
             font-size: 1.2rem;
             font-weight: 700;
         }
-
+        
         #user-id {
             font-size: 0.9rem;
             font-weight: 400;
