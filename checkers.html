@@ -5,20 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Multiplayer Checkers Game</title>
     <script type="module">
+        // Import necessary Firebase modules
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithCustomToken, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, query, where, addDoc, updateDoc, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, query, where, updateDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Global variables provided by the Canvas environment
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-        // Initialize Firebase services
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
-        
+        // Initialize Firebase services and store references
+        let app, db, auth;
+
         // Game state variables
         let userId = null;
         let username = 'Player';
@@ -27,12 +26,11 @@
         let currentPlayer = null;
         let selectedPiece = null;
         let isGameOver = false;
-        let isAnimating = false;
         let playerColor = null;
         let isBotGame = false;
-        let gameHistory = [];
-        const botName = 'Checkers Bot';
-        
+        let botName = 'Checkers Bot';
+        let waitingForOpponent = false;
+
         // Game UI elements
         const mainMenu = document.getElementById('main-menu');
         const gameContainer = document.getElementById('game-container');
@@ -48,12 +46,18 @@
         // --- Firebase Initialization and Authentication ---
         async function initFirebase() {
             try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                // Sign in with custom token or anonymously if not available
                 if (initialAuthToken) {
                     await signInWithCustomToken(auth, initialAuthToken);
                 } else {
                     await signInAnonymously(auth);
                 }
-                
+
+                // Listen for authentication state changes
                 onAuthStateChanged(auth, (user) => {
                     if (user) {
                         userId = user.uid;
@@ -61,17 +65,17 @@
                         updateUsernameDisplay();
                     } else {
                         console.log("No user signed in.");
+                        showMessage("Authentication failed. Please refresh the page.", 5000);
                     }
                 });
             } catch (error) {
-                console.error("Firebase Auth Error:", error);
-                showMessage("Authentication failed. Please try again later.", 5000);
+                console.error("Firebase Init Error:", error);
+                showMessage("Failed to connect to the database. Please try again later.", 5000);
             }
         }
 
-        // --- Game Setup and Logic ---
+        // --- UI & State Management ---
 
-        // Display a message in a custom message box
         function showMessage(text, duration = 3000) {
             messageBox.textContent = text;
             messageBox.classList.add('show');
@@ -82,30 +86,26 @@
             }
         }
 
-        // Show a loading/waiting screen
         function showWaitingScreen(message) {
             waitingScreen.style.display = 'flex';
             document.getElementById('waiting-message').textContent = message;
         }
 
-        // Hide the loading/waiting screen
         function hideWaitingScreen() {
             waitingScreen.style.display = 'none';
         }
 
-        // Transition from main menu to game
         function showGame() {
             mainMenu.style.display = 'none';
             gameContainer.style.display = 'flex';
         }
 
-        // Transition back to main menu
         function showMainMenu() {
             mainMenu.style.display = 'flex';
             gameContainer.style.display = 'none';
+            resetLocalState();
         }
-        
-        // Update the username display
+
         function updateUsernameDisplay() {
             username = usernameInput.value.trim() || 'Player';
             userIdDisplay.innerHTML = `Your username: **${username}**<br>Your user ID: ${userId}`;
@@ -113,50 +113,62 @@
         
         usernameInput.addEventListener('input', updateUsernameDisplay);
 
-        // Create a new multiplayer game
+        function resetLocalState() {
+            // Fix: Initialize board with an 8x8 array of nulls to prevent rendering errors
+            board = Array(8).fill(null).map(() => Array(8).fill(null));
+            currentPlayer = null;
+            selectedPiece = null;
+            isGameOver = false;
+            playerColor = null;
+            isBotGame = false;
+            waitingForOpponent = false;
+            gameId = null;
+            undoButton.style.display = 'none';
+            renderBoard();
+        }
+        
+        // --- Game Flow Functions ---
+
         window.startNewGame = async function() {
             if (!userId) {
-                showMessage("Authentication not ready. Please wait.");
+                showMessage("Authentication not ready. Please wait.", 3000);
                 return;
             }
             updateUsernameDisplay();
             isBotGame = false;
             undoButton.style.display = 'none';
+            waitingForOpponent = true;
 
             try {
-                showWaitingScreen("Creating new game...");
+                showWaitingScreen("Creating new game and waiting for a player to join...");
                 const newGameRef = doc(collection(db, `artifacts/${appId}/public/data/games`));
-                const newGameId = newGameRef.id;
-                gameId = newGameId;
+                gameId = newGameRef.id;
 
-                const initialBoard = createInitialBoard();
                 await setDoc(newGameRef, {
                     player1: userId,
                     player1Name: username,
                     player2: null,
                     player2Name: null,
-                    board: JSON.stringify(initialBoard),
-                    turn: 'black', // Black always goes first
+                    board: JSON.stringify(createInitialBoard()),
+                    turn: 'black',
                     status: 'waiting',
                     winner: null
                 });
 
                 showMessage("Game created! Waiting for another player...", 0);
                 showGame();
-                playerColor = 'black'; // Creator is always black
+                playerColor = 'black';
                 listenToGameChanges();
             } catch (e) {
                 console.error("Error creating game:", e);
                 showMessage("Failed to create game. Please try again.", 5000);
-            } finally {
-                hideWaitingScreen();
+                showMainMenu();
             }
         }
 
-        // Join an existing multiplayer game
         window.joinGame = async function() {
             if (!userId) {
-                showMessage("Authentication not ready. Please wait.");
+                showMessage("Authentication not ready. Please wait.", 3000);
                 return;
             }
             updateUsernameDisplay();
@@ -167,8 +179,8 @@
                 showMessage("Please enter a username to join.", 3000);
                 return;
             }
-
-            showWaitingScreen(`Searching for game by ${otherUsername}...`);
+            
+            showWaitingScreen(`Searching for a game created by "${otherUsername}"...`);
             try {
                 const gamesRef = collection(db, `artifacts/${appId}/public/data/games`);
                 const q = query(gamesRef, where("player1Name", "==", otherUsername), where("status", "==", "waiting"));
@@ -177,22 +189,15 @@
                 if (!querySnapshot.empty) {
                     const gameDoc = querySnapshot.docs[0];
                     gameId = gameDoc.id;
-                    const gameData = gameDoc.data();
-                    
-                    if (gameData.player2) {
-                        showMessage("That game is already full.", 3000);
-                        return;
-                    }
-                    
                     await updateDoc(doc(db, `artifacts/${appId}/public/data/games`, gameId), {
                         player2: userId,
                         player2Name: username,
                         status: 'in-progress'
                     });
 
-                    showMessage("Joined game successfully! Starting game...", 0);
+                    showMessage("Joined game successfully! Starting...", 0);
                     showGame();
-                    playerColor = 'red'; // Joinee is always red
+                    playerColor = 'red';
                     listenToGameChanges();
                 } else {
                     showMessage("No available game found with that username.", 5000);
@@ -204,194 +209,81 @@
                 hideWaitingScreen();
             }
         }
-        
-        // Start a game against the bot
+
         window.startBotGame = async function() {
             if (!userId) {
-                showMessage("Authentication not ready. Please wait.");
+                showMessage("Authentication not ready. Please wait.", 3000);
                 return;
             }
             updateUsernameDisplay();
             isBotGame = true;
             undoButton.style.display = 'inline-block';
-
+            
             try {
                 showWaitingScreen("Starting game against the bot...");
                 const newGameRef = doc(collection(db, `artifacts/${appId}/public/data/games`));
-                const newGameId = newGameRef.id;
-                gameId = newGameId;
-
-                const initialBoard = createInitialBoard();
-                gameHistory = [JSON.parse(JSON.stringify(initialBoard))];
+                gameId = newGameRef.id;
 
                 await setDoc(newGameRef, {
                     player1: userId,
                     player1Name: username,
                     player2: 'bot',
                     player2Name: botName,
-                    board: JSON.stringify(initialBoard),
+                    board: JSON.stringify(createInitialBoard()),
                     turn: 'black',
                     status: 'in-progress',
                     winner: null
                 });
-
+                
                 showMessage("Game started against the bot!", 0);
                 showGame();
-                playerColor = 'black'; // Human player is always black
+                playerColor = 'black';
                 listenToGameChanges();
             } catch (e) {
                 console.error("Error starting bot game:", e);
                 showMessage("Failed to start bot game. Please try again.", 5000);
-            } finally {
-                hideWaitingScreen();
+                showMainMenu();
             }
         }
-        
-        // Undo the last move (bot games only)
-        window.undoMove = async function() {
-            if (!isBotGame || gameHistory.length < 2 || isAnimating) {
-                return;
-            }
-            isAnimating = true;
-            
-            // Pop the current state and the last move state
-            gameHistory.pop(); // Remove the current state
-            const prevBoard = gameHistory.pop(); // Get the state before the last human move
-            
-            // Push it back so we have a base state to go back to next undo
-            gameHistory.push(prevBoard);
 
-            board = JSON.parse(JSON.stringify(prevBoard));
-            selectedPiece = null;
-            clearHighlights();
-            renderBoard();
-
-            // The turn should be black as we are undoing the bot's move
-            const gameRef = doc(db, `artifacts/${appId}/public/data/games`, gameId);
-            await updateDoc(gameRef, {
-                board: JSON.stringify(board),
-                turn: 'black'
-            });
-            
-            isAnimating = false;
-        }
-
-        // Listen for real-time updates to the game document
+        // Listens for changes to the game document in Firestore
         function listenToGameChanges() {
             const gameRef = doc(db, `artifacts/${appId}/public/data/games`, gameId);
-            onSnapshot(gameRef, (doc) => {
-                if (doc.exists()) {
-                    const data = doc.data();
-                    const newBoard = JSON.parse(data.board);
-                    
-                    // Only update history and board if it's a new move
-                    if (JSON.stringify(newBoard) !== JSON.stringify(board)) {
-                        board = newBoard;
-                        currentPlayer = data.turn;
-                        isGameOver = data.winner !== null;
-                        
-                        if(isBotGame) {
-                            gameHistory.push(JSON.parse(JSON.stringify(board)));
-                        }
-                    }
-
-                    if (data.status === 'waiting' && data.player2) {
-                         showMessage("Game has started!", 3000);
-                    }
-                    if (isGameOver) {
-                        endGame(data.winner);
-                    } else {
-                        renderBoard();
-                        updateTurnDisplay(data.player1Name, data.player2Name);
-                        // Check if it's the bot's turn
-                        if (data.player2 === 'bot' && currentPlayer === 'red') {
-                             setTimeout(makeBotMove, 1000); // 1-second delay for bot move
-                        }
-                    }
-                } else {
+            onSnapshot(gameRef, (docSnap) => {
+                if (!docSnap.exists()) {
                     showMessage("Game not found or has ended.", 5000);
                     showMainMenu();
-                    gameId = null;
-                    resetLocalState();
+                    return;
                 }
+                
+                const data = docSnap.data();
+                board = JSON.parse(data.board);
+                currentPlayer = data.turn;
+                isGameOver = data.winner !== null;
+
+                if (waitingForOpponent && data.status === 'in-progress') {
+                    waitingForOpponent = false;
+                    hideWaitingScreen();
+                    showMessage("A player has joined! The game is starting.", 3000);
+                }
+
+                if (isGameOver) {
+                    endGame(data.winner);
+                } else {
+                    renderBoard();
+                    updateTurnDisplay(data.player1Name, data.player2Name);
+                    
+                    if (isBotGame && currentPlayer === 'red') {
+                        setTimeout(makeBotMove, 1000);
+                    }
+                }
+            }, (error) => {
+                console.error("Error listening to game changes:", error);
+                showMessage("Lost connection to the game. Please go back to the menu.", 5000);
             });
         }
         
-        // Bot logic to make a move
-        async function makeBotMove() {
-            if (isAnimating) return; // Prevent bot from moving while animation is in progress
-            
-            isAnimating = true;
-            
-            const botPieces = [];
-            for (let r = 0; r < 8; r++) {
-                for (let c = 0; c < 8; c++) {
-                    const piece = board[r][c];
-                    if (piece && piece.color === 'red') {
-                        botPieces.push({ row: r, col: c });
-                    }
-                }
-            }
-
-            let availableMoves = [];
-            let availableJumps = [];
-
-            for (const piece of botPieces) {
-                const jumps = getAllPossibleJumps(piece.row, piece.col);
-                if (jumps.length > 0) {
-                    availableJumps.push(...jumps);
-                }
-                const moves = getAllPossibleMoves(piece.row, piece.col);
-                if (moves.length > 0) {
-                    availableMoves.push(...moves);
-                }
-            }
-
-            let move = null;
-            if (availableJumps.length > 0) {
-                // Prioritize jumps
-                move = availableJumps[Math.floor(Math.random() * availableJumps.length)];
-            } else if (availableMoves.length > 0) {
-                // Otherwise, pick a random simple move
-                move = availableMoves[Math.floor(Math.random() * availableMoves.length)];
-            }
-            
-            if (move) {
-                await movePiece(move.startRow, move.startCol, move.endRow, move.endCol);
-                
-                // If the move was a jump, check for further jumps
-                if (Math.abs(move.endRow - move.startRow) === 2) {
-                    const nextJumps = getAllPossibleJumps(move.endRow, move.endCol);
-                    if (nextJumps.length > 0) {
-                        isAnimating = false;
-                        setTimeout(makeBotMove, 1000); // Wait for another jump
-                        return;
-                    }
-                }
-                
-                if (checkWinCondition()) {
-                    updateGameState('red'); // Bot wins
-                } else {
-                    updateGameState();
-                }
-            }
-            
-            isAnimating = false;
-        }
-
-        // Reset the local game state for a new game
-        function resetLocalState() {
-            board = [];
-            currentPlayer = null;
-            selectedPiece = null;
-            isGameOver = false;
-            isAnimating = false;
-            playerColor = null;
-            isBotGame = false;
-            gameHistory = [];
-            renderBoard();
-            undoButton.style.display = 'none';
-        }
+        // --- Game Board & Piece Logic ---
 
         function createInitialBoard() {
             const initialBoard = [];
@@ -410,7 +302,6 @@
             return initialBoard;
         }
 
-        // Render the board to the DOM
         function renderBoard() {
             boardElement.innerHTML = '';
             for (let i = 0; i < 8; i++) {
@@ -432,114 +323,106 @@
             }
         }
         
-        // Logic for handling a square click
         async function handleSquareClick(row, col) {
-            if (isGameOver || isAnimating || currentPlayer !== playerColor) {
+            if (isGameOver || currentPlayer !== playerColor) {
                 return;
             }
+
             const piece = board[row][col];
             
-            // If a piece is selected and the new click is a valid move
+            // If a piece is selected and the new click is a valid move target
             if (selectedPiece && canMove(selectedPiece.row, selectedPiece.col, row, col)) {
-                isAnimating = true;
-                clearHighlights();
-
-                const isJump = await movePiece(selectedPiece.row, selectedPiece.col, row, col);
-                
-                // If a jump was made, check for further jumps from the new position
-                if (isJump) {
-                    selectedPiece = { row, col, ...board[row][col] };
-                    const nextJumps = getAllPossibleJumps(row, col);
-                    if (nextJumps.length > 0) {
-                        highlightMoves(nextJumps);
-                        isAnimating = false; // Allow the user to select the next jump
-                        return; // Exit without switching turn
-                    }
-                }
-                
-                // If no jump was made or no more jumps are available, end the turn and update DB
+                await executeMove(selectedPiece.row, selectedPiece.col, row, col);
                 selectedPiece = null;
-                isAnimating = false;
-                
-                if(checkWinCondition()){
-                    updateGameState(playerColor);
-                } else {
-                    updateGameState();
-                }
-                
+                clearHighlights();
             } else if (piece && piece.color === playerColor) {
-                // Select a new piece if it's the current player's turn
+                // Select a new piece
                 selectedPiece = { row, col, ...piece };
                 clearHighlights();
                 highlightValidMoves(row, col);
             }
         }
+        
+        async function executeMove(startRow, startCol, endRow, endCol) {
+            if (!gameId) return; // Defensive check to prevent errors
+            
+            const piece = board[startRow][startCol];
+            board[endRow][endCol] = piece;
+            board[startRow][startCol] = null;
+            
+            // Check if it was a jump
+            const isJump = Math.abs(endRow - startRow) === 2;
+            if (isJump) {
+                const jumpedRow = startRow + (endRow - startRow) / 2;
+                const jumpedCol = startCol + (endCol - startCol) / 2;
+                board[jumpedRow][jumpedCol] = null;
+            }
 
-        // Update game state in Firestore
-        async function updateGameState(winner = null) {
-            if (!gameId) return;
+            // Check for kinging
+            if ((piece.color === 'red' && endRow === 7) || (piece.color === 'black' && endRow === 0)) {
+                board[endRow][endCol].king = true;
+            }
+            
+            // Update Firestore with the new board state
             const gameRef = doc(db, `artifacts/${appId}/public/data/games`, gameId);
-            const nextTurn = currentPlayer === 'black' ? 'red' : 'black';
-            const boardData = JSON.stringify(board);
             await updateDoc(gameRef, {
-                board: boardData,
-                turn: nextTurn,
-                winner: winner
+                board: JSON.stringify(board),
+                turn: isJump && checkFurtherJumps(endRow, endCol) ? currentPlayer : (currentPlayer === 'black' ? 'red' : 'black'),
+                winner: checkWinCondition() ? currentPlayer : null
             });
         }
         
-        // Clear all highlighted squares
-        function clearHighlights() {
-            document.querySelectorAll('.square.highlight').forEach(square => {
-                square.classList.remove('highlight');
-            });
-            document.querySelectorAll('.piece.selected').forEach(piece => {
-                piece.classList.remove('selected');
-            });
-        }
-        
-        // Get all possible moves for a piece (single moves and jumps)
-        function getAllPossibleMoves(row, col) {
-            const moves = [];
-            const piece = board[row][col];
-            if (!piece) return moves;
-
+        function canMove(startRow, startCol, endRow, endCol) {
+            const piece = board[startRow][startCol];
+            if (!piece || board[endRow][endCol] || piece.color !== playerColor) {
+                return false;
+            }
+            
+            const rowDiff = endRow - startRow;
+            const colDiff = Math.abs(endCol - startCol);
             const directions = getMoveDirections(piece);
+            const moveDirection = [Math.sign(rowDiff), Math.sign(endCol - startCol)];
 
-            for (const [dr, dc] of directions) {
-                // Check for single moves
-                const newRow = row + dr;
-                const newCol = col + dc;
-                if (isValidPosition(newRow, newCol) && !board[newRow][newCol]) {
-                    moves.push({ startRow: row, startCol: col, endRow: newRow, endCol: newCol });
-                }
-                
-                // Check for jump moves
-                const jumpRow = row + 2 * dr;
-                const jumpCol = col + 2 * dc;
-                if (isValidPosition(jumpRow, jumpCol) && !board[jumpRow][jumpCol]) {
-                    const jumpedRow = row + dr;
-                    const jumpedCol = col + dc;
-                    const jumpedPiece = board[jumpedRow][jumpedCol];
-                    if(jumpedPiece && jumpedPiece.color !== piece.color){
-                         moves.push({ startRow: row, startCol: col, endRow: jumpRow, endCol: jumpCol });
+            if (!directions.some(([dr, dc]) => dr === moveDirection[0] && dc === moveDirection[1])) {
+                return false;
+            }
+
+            if (colDiff === 1 && Math.abs(rowDiff) === 1) {
+                return !hasForcedJumps();
+            }
+
+            if (colDiff === 2 && Math.abs(rowDiff) === 2) {
+                const jumpedRow = startRow + rowDiff / 2;
+                const jumpedCol = startCol + (endCol - startCol) / 2;
+                const jumpedPiece = board[jumpedRow][jumpedCol];
+                return jumpedPiece && jumpedPiece.color !== playerColor;
+            }
+            
+            return false;
+        }
+
+        function hasForcedJumps() {
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const piece = board[r][c];
+                    if (piece && piece.color === playerColor) {
+                        if (getAllPossibleJumps(r, c).length > 0) {
+                            return true;
+                        }
                     }
                 }
             }
-            return moves;
-        }
-        
-        // Check if a position is on the board
-        function isValidPosition(row, col) {
-            return row >= 0 && row < 8 && col >= 0 && col < 8;
+            return false;
         }
 
-        // Get all possible jump moves for a piece
+        function checkFurtherJumps(row, col) {
+            return getAllPossibleJumps(row, col).length > 0;
+        }
+
         function getAllPossibleJumps(row, col) {
             const jumps = [];
             const piece = board[row][col];
             if (!piece) return jumps;
-
             const directions = getMoveDirections(piece);
 
             for (const [dr, dc] of directions) {
@@ -554,27 +437,85 @@
             }
             return jumps;
         }
-
-        // Highlight a list of moves on the board
-        function highlightMoves(moves) {
-            moves.forEach(move => {
-                document.querySelector(`[data-row="${move.endRow}"][data-col="${move.endCol}"]`).classList.add('highlight');
-            });
-        }
-
-        // Highlight valid moves for a selected piece
+        
         function highlightValidMoves(row, col) {
-            const piece = board[row][col];
             const pieceElement = document.querySelector(`[data-row="${row}"][data-col="${col}"] .piece`);
             if (pieceElement) {
                 pieceElement.classList.add('selected');
             }
-
+            
             const moves = getAllPossibleMoves(row, col);
-            highlightMoves(moves);
+            moves.forEach(move => {
+                document.querySelector(`[data-row="${move.endRow}"][data-col="${move.endCol}"]`).classList.add('highlight');
+            });
         }
         
-        // Get valid move directions for a piece
+        function getAllPossibleMoves(row, col) {
+            const moves = [];
+            const piece = board[row][col];
+            if (!piece) return moves;
+
+            const directions = getMoveDirections(piece);
+            const forcedJumps = getAllPossibleJumps(row, col);
+
+            if (forcedJumps.length > 0) {
+                return forcedJumps;
+            }
+
+            for (const [dr, dc] of directions) {
+                const newRow = row + dr;
+                const newCol = col + dc;
+                if (isValidPosition(newRow, newCol) && !board[newRow][newCol]) {
+                    moves.push({ startRow: row, startCol: col, endRow: newRow, endCol: newCol });
+                }
+            }
+            return moves;
+        }
+
+        // --- Bot Logic ---
+        async function makeBotMove() {
+            const botPieces = [];
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    if (board[r][c] && board[r][c].color === 'red') {
+                        botPieces.push({ row: r, col: c });
+                    }
+                }
+            }
+
+            let availableMoves = [];
+            let availableJumps = [];
+
+            for (const piece of botPieces) {
+                availableJumps.push(...getAllPossibleJumps(piece.row, piece.col).map(m => ({ ...m, piece: piece })));
+                if (availableJumps.length === 0) {
+                     availableMoves.push(...getAllPossibleMoves(piece.row, piece.col).map(m => ({ ...m, piece: piece })));
+                }
+            }
+            
+            const moves = availableJumps.length > 0 ? availableJumps : availableMoves;
+            if (moves.length > 0) {
+                const randomMove = moves[Math.floor(Math.random() * moves.length)];
+                await executeMove(randomMove.startRow, randomMove.startCol, randomMove.endRow, randomMove.endCol);
+                
+                if (Math.abs(randomMove.endRow - randomMove.startRow) === 2 && checkFurtherJumps(randomMove.endRow, randomMove.endCol)) {
+                    // Bot makes another jump
+                    setTimeout(makeBotMove, 1000);
+                }
+            }
+        }
+        
+        // --- Utility Functions ---
+
+        function clearHighlights() {
+            document.querySelectorAll('.square.highlight').forEach(square => square.classList.remove('highlight'));
+            document.querySelectorAll('.piece.selected').forEach(piece => piece.classList.remove('selected'));
+        }
+
+        function isValidPosition(row, col) {
+            return row >= 0 && row < 8 && col >= 0 && col < 8;
+        }
+        
         function getMoveDirections(piece) {
             if (piece.king) {
                 return [[1, -1], [1, 1], [-1, -1], [-1, 1]];
@@ -584,100 +525,13 @@
                 return [[-1, -1], [-1, 1]];
             }
         }
-
-        // Check if a move is valid
-        function canMove(startRow, startCol, endRow, endCol) {
-            const piece = board[startRow][startCol];
-            if (!piece || board[endRow][endCol] || piece.color !== playerColor) {
-                return false;
-            }
-
-            const rowDiff = endRow - startRow;
-            const colDiff = Math.abs(endCol - startCol);
-            
-            const directions = getMoveDirections(piece);
-            const moveDirection = [Math.sign(rowDiff), Math.sign(endCol - startCol)];
-
-            // Check if the move direction is allowed
-            if (!directions.some(([dr, dc]) => dr === moveDirection[0] && dc === moveDirection[1])) {
-                return false;
-            }
-
-            // Simple move
-            if (colDiff === 1 && Math.abs(rowDiff) === 1) {
-                return true;
-            }
-
-            // Jump move
-            if (colDiff === 2 && Math.abs(rowDiff) === 2) {
-                const jumpedRow = startRow + rowDiff / 2;
-                const jumpedCol = startCol + (endCol - startCol) / 2;
-                const jumpedPiece = board[jumpedRow][jumpedCol];
-                return jumpedPiece && jumpedPiece.color !== playerColor;
-            }
-            
-            return false;
-        }
-
-        // Execute a move on the board and return true if it was a jump
-        async function movePiece(startRow, startCol, endRow, endCol) {
-            const startSquare = document.querySelector(`[data-row="${startRow}"][data-col="${startCol}"]`);
-            const pieceElement = startSquare.querySelector('.piece');
-            
-            // Get the size of a square to calculate the transform
-            const squareSize = startSquare.offsetWidth;
-
-            // Calculate translation distance based on square size
-            const dx = (endCol - startCol) * squareSize;
-            const dy = (endRow - startRow) * squareSize;
-
-            // Add 'moving' class to increase z-index and apply transform
-            pieceElement.classList.add('moving');
-            pieceElement.style.transform = `translate(${dx}px, ${dy}px) scale(1.15)`;
-
-            // Wait for the transition to finish
-            return new Promise(resolve => {
-                pieceElement.addEventListener('transitionend', (e) => {
-                    if (e.propertyName !== 'transform') return;
-
-                    // Update the board state after animation completes
-                    const piece = board[startRow][startCol];
-                    board[endRow][endCol] = piece;
-                    board[startRow][startCol] = null;
-                    
-                    let isJump = false;
-                    const rowDiff = endRow - startRow;
-                    const colDiff = Math.abs(endCol - startCol);
-                    if (colDiff === 2) {
-                        const jumpedRow = startRow + rowDiff / 2;
-                        const jumpedCol = startCol + (endCol - startCol) / 2;
-                        board[jumpedRow][jumpedCol] = null;
-                        isJump = true;
-                    }
-
-                    // Check for kinging
-                    if ((piece.color === 'red' && endRow === 7) || (piece.color === 'black' && endRow === 0)) {
-                        board[endRow][endCol].king = true;
-                    }
-
-                    // Re-render to reflect the final state and remove animating pieces
-                    renderBoard();
-                    resolve(isJump);
-                }, { once: true });
-            });
-        }
         
         function updateTurnDisplay(player1Name, player2Name) {
-            let turnText = '';
-            if (currentPlayer === playerColor) {
-                turnText = `Your Turn (${currentPlayer})`;
-            } else {
-                turnText = `${currentPlayer === 'black' ? player1Name : player2Name}'s Turn (${currentPlayer})`;
-            }
-            turnDisplay.textContent = turnText;
+            if (isGameOver) return;
+            const turnText = currentPlayer === playerColor ? 'Your Turn' : `${currentPlayer === 'black' ? player1Name : player2Name}'s Turn`;
+            turnDisplay.textContent = `${turnText} (${currentPlayer})`;
         }
-
-        // Check if the game is over
+        
         function checkWinCondition() {
             let redPieces = 0;
             let blackPieces = 0;
@@ -692,40 +546,28 @@
             }
             return redPieces === 0 || blackPieces === 0;
         }
-
-        // End the game and display the winner
+        
         function endGame(winner) {
             isGameOver = true;
-            let winnerText = winner === 'red' ? 'Red' : 'Black';
+            const winnerText = winner === 'red' ? 'Red' : 'Black';
             showMessage(`${winnerText} wins!`, 0);
 
-            // Display a restart button
             const restartBtn = document.createElement('button');
             restartBtn.textContent = 'Back to Menu';
             restartBtn.className = 'action-button';
-            restartBtn.onclick = resetGame;
+            restartBtn.onclick = showMainMenu;
             messageBox.appendChild(restartBtn);
-            messageBox.classList.add('show');
         }
 
-        // Reset the game
-        function resetGame() {
-            messageBox.classList.remove('show');
-            messageBox.innerHTML = '';
-            showMainMenu();
-        }
-
-        // Initial setup
+        // Initial setup on page load
         window.onload = () => {
             initFirebase();
             showMainMenu();
         }
-
     </script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
 
-        /* Base styling for the entire page */
         body {
             font-family: 'Inter', sans-serif;
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
@@ -739,7 +581,6 @@
             text-align: center;
         }
 
-        /* Main container for the game */
         .container {
             background-color: #ffffff;
             padding: 30px;
@@ -784,7 +625,6 @@
             z-index: 999;
         }
         
-        /* Title styling */
         h1 {
             color: #2c3e50;
             margin: 0;
@@ -792,7 +632,6 @@
             font-weight: 700;
         }
 
-        /* Game board and squares */
         #game-board {
             display: grid;
             grid-template-columns: repeat(8, 1fr);
@@ -817,17 +656,14 @@
             position: relative;
         }
 
-        /* Dark squares with a wood texture gradient */
         .square.dark {
             background: linear-gradient(to bottom right, #5d4037, #4a2c2a);
         }
 
-        /* Light squares with a clean cream color */
         .square.light {
             background-color: #F8E8C0;
         }
 
-        /* Pieces with a 3D-like spherical look */
         .piece {
             width: 80%;
             height: 80%;
@@ -838,7 +674,7 @@
             align-items: center;
             font-weight: bold;
             color: #fff;
-            transition: transform 0.3s ease-in-out; /* Added a smooth transition */
+            transition: transform 0.3s ease-in-out;
             user-select: none;
             border: 2px solid rgba(255, 255, 255, 0.2);
             z-index: 10;
@@ -852,7 +688,6 @@
             background: radial-gradient(circle at top left, #5a5a5a, #333333);
         }
 
-        /* King piece styling */
         .king::after {
             content: '★';
             font-size: 2.5em;
@@ -864,27 +699,18 @@
             transform: translate(-50%, -50%);
         }
 
-        /* Selected piece visual feedback */
         .piece.selected {
             transform: scale(1.15) translateY(-5px);
             box-shadow: 0 0 15px #2196f3, 0 5px 20px rgba(0, 0, 0, 0.3);
             border: 3px solid #2196f3;
         }
         
-        /* Piece moving state for animation */
-        .piece.moving {
-            z-index: 20;
-            position: relative;
-        }
-
-        /* Highlighted squares for valid moves */
         .square.highlight {
             background-color: #81c784 !important;
             box-shadow: inset 0 0 10px #4caf50;
             border-radius: 8px;
         }
 
-        /* Message box pop-up */
         .message-box {
             position: fixed;
             top: 50%;
@@ -909,7 +735,6 @@
             display: flex;
         }
 
-        /* Player turn and info display */
         .info-display {
             display: flex;
             justify-content: space-between;
@@ -935,7 +760,6 @@
             word-break: break-all;
         }
         
-        /* Button styling */
         .button-group, .game-buttons {
             display: flex;
             justify-content: center;
@@ -951,7 +775,6 @@
         }
 
         .action-button {
-            background-color: #4CAF50;
             background: linear-gradient(45deg, #4CAF50, #8bc34a);
             color: white;
             border: none;
@@ -1023,7 +846,7 @@
             </div>
             <div class="button-group">
                 <button class="action-button" onclick="undoMove()" id="undo-button">Undo Move</button>
-                <button class="action-button" onclick="resetGame()">Back to Menu</button>
+                <button class="action-button" onclick="showMainMenu()">Back to Menu</button>
             </div>
         </div>
     </div>
