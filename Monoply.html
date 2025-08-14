@@ -149,7 +149,7 @@
             height: 20px;
             border-radius: 50%;
             border: 2px solid #fff;
-            transition: all 0.5s ease-in-out;
+            transition: all 0.2s ease-in-out; /* Slower transition for step-by-step movement */
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
             z-index: 10;
         }
@@ -418,10 +418,53 @@
             const boardRect = board.getBoundingClientRect();
             const tokenStyle = window.getComputedStyle(token);
 
+            // Calculate new position based on the current property's location
             let newLeft = propertyRect.left - boardRect.left + parseFloat(tokenStyle.left);
             let newTop = propertyRect.top - boardRect.top + parseFloat(tokenStyle.top);
 
             token.style.transform = `translate(${newLeft}px, ${newTop}px)`;
+        }
+    }
+
+    /**
+     * Animates the player's movement one space at a time.
+     * @param {number} playerIndex - The index of the player to move.
+     * @param {number} steps - The number of spaces to move.
+     */
+    function animateMovement(playerIndex, steps) {
+        if (steps <= 0) {
+            // Movement is complete, handle the landing logic
+            handleLandingOnSpace(playerIndex);
+            return;
+        }
+
+        const player = players[playerIndex];
+        // Move one step
+        player.position = (player.position + 1) % boardPositions.length;
+        // If player passes GO, give them $200
+        if (player.position === 0) {
+            player.money += 200;
+            showMessage(`${player.name} passed GO and collected $200.`);
+            updatePlayerPanels();
+        }
+        
+        updatePlayerTokenPosition(playerIndex);
+        
+        // Wait a short time and then move the next step
+        setTimeout(() => {
+            animateMovement(playerIndex, steps - 1);
+        }, 200); // Adjust delay for faster/slower animation
+    }
+
+    function handleLandingOnSpace(playerIndex) {
+        const player = players[playerIndex];
+        const property = boardPositions[player.position];
+        const propertyType = property.type;
+        
+        if (propertyType === 'property' || propertyType === 'railroad' || propertyType === 'utility') {
+            handleLandingOnProperty(playerIndex);
+        } else {
+            handleLandingOnCardOrTax(playerIndex);
         }
     }
 
@@ -434,19 +477,6 @@
         return roll1 + roll2;
     }
 
-    function movePlayer(playerIndex, distance) {
-        const player = players[playerIndex];
-        let newPosition = (player.position + distance) % boardPositions.length;
-
-        // If player passes GO, give them $200
-        if (newPosition < player.position && player.position + distance >= boardPositions.length) {
-            player.money += 200;
-            showMessage(`${player.name} passed GO and collected $200.`);
-        }
-        player.position = newPosition;
-        updatePlayerTokenPosition(playerIndex);
-    }
-    
     function handleLandingOnProperty(playerIndex) {
         const player = players[playerIndex];
         const property = boardPositions[player.position];
@@ -557,17 +587,11 @@
             gameMessage.textContent = `${bot.name} rolled a ${diceValue}.`;
             
             setTimeout(() => {
-                movePlayer(currentPlayerIndex, diceValue);
-                const propertyType = boardPositions[bot.position].type;
-                if (propertyType === 'property' || propertyType === 'railroad' || propertyType === 'utility') {
-                    handleLandingOnProperty(currentPlayerIndex);
-                } else {
-                    handleLandingOnCardOrTax(currentPlayerIndex);
-                }
+                // Animate the movement for the bot
+                animateMovement(currentPlayerIndex, diceValue);
             }, 1000);
         }, 1000);
     }
-
 
     // --- Event Handlers ---
     rollDiceBtn.addEventListener('click', () => {
@@ -579,13 +603,8 @@
         gameMessage.textContent = `You rolled a ${diceValue}!`;
         
         setTimeout(() => {
-            movePlayer(currentPlayerIndex, diceValue);
-            const propertyType = boardPositions[players[currentPlayerIndex].position].type;
-            if (propertyType === 'property' || propertyType === 'railroad' || propertyType === 'utility') {
-                handleLandingOnProperty(currentPlayerIndex);
-            } else {
-                handleLandingOnCardOrTax(currentPlayerIndex);
-            }
+            // Animate the movement for the human player
+            animateMovement(currentPlayerIndex, diceValue);
         }, 1000);
     });
 
@@ -607,7 +626,5 @@
 
     // Call the initialization function when the page loads
     window.onload = initGame;
-
 </script>
 </body>
-</html>
