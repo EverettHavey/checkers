@@ -71,17 +71,17 @@
             opacity: 1;
         }
         
-        .menu-btn:disabled {
+        .menu-btn:disabled, .game-btn:disabled, .color-btn:disabled {
             cursor: not-allowed;
             opacity: 0.5;
         }
 
-        .menu-btn:hover:not(:disabled), .game-btn:hover, .color-btn:hover {
+        .menu-btn:hover:not(:disabled), .game-btn:hover:not(:disabled), .color-btn:hover:not(:disabled) {
             transform: translateY(-3px);
             box-shadow: 0 6px 12px rgba(0, 0, 0, 0.5);
         }
 
-        .menu-btn:active:not(:disabled), .game-btn:active, .color-btn:active {
+        .menu-btn:active:not(:disabled), .game-btn:active:not(:disabled), .color-btn:active:not(:disabled) {
             transform: translateY(0);
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
         }
@@ -247,23 +247,22 @@
             cursor: pointer;
             font-size: 1em;
         }
-
     </style>
 </head>
 <body>
     <div id="app">
         <div id="main-menu" class="container">
             <h1>Checkers</h1>
-            <div class="message-box" id="menu-message">Initializing Firebase...</div>
+            <div class="message-box" id="menu-message">Connecting to Firebase...</div>
 
             <div class="color-selection">
-                <button class="color-btn black selected" data-color="black">Black</button>
-                <button class="color-btn red" data-color="red">Red</button>
+                <button class="color-btn black selected" data-color="black" disabled>Black</button>
+                <button class="color-btn red" data-color="red" disabled>Red</button>
             </div>
             <button id="1-player-btn" class="menu-btn" disabled>1 Player (vs. Bot)</button>
             <button id="2-player-btn" class="menu-btn" disabled>2 Players (Create Game)</button>
             <div class="input-group">
-                <input type="text" id="game-code-input" placeholder="Enter game code">
+                <input type="text" id="game-code-input" placeholder="Enter game code" disabled>
                 <button id="join-game-btn" class="menu-btn" disabled>Join Game</button>
             </div>
         </div>
@@ -274,7 +273,7 @@
             <div id="waiting-message" style="display: none;">Waiting for 2nd player...</div>
             <canvas id="gameCanvas"></canvas>
             <div class="game-controls">
-                <button id="undo-btn" class="game-btn">Undo Move</button>
+                <button id="undo-btn" class="game-btn" disabled>Undo Move</button>
                 <button id="exit-btn" class="game-btn">Exit to Menu</button>
             </div>
             <div id="user-info" style="margin-top: 10px; font-size: 0.8em; opacity: 0.7;"></div>
@@ -292,22 +291,12 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, onSnapshot, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot, updateDoc, deleteDoc, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Firebase variables and initialization
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
         
-        let firebaseConfig = null;
-        try {
-            firebaseConfig = (typeof __firebase_config === 'string' && __firebase_config.length > 0)
-                ? JSON.parse(__firebase_config)
-                : {};
-        } catch (e) {
-            console.error("Error parsing Firebase configuration:", e);
-            firebaseConfig = {};
-        }
-
         let app, db, auth;
         let userId = null;
         let isFirebaseReady = false;
@@ -351,6 +340,9 @@
         const modalOkBtn = document.getElementById('modal-ok-btn');
         const userInfoDisplay = document.getElementById('user-info');
         const menuButtons = document.querySelectorAll('.menu-btn');
+        const colorButtons = document.querySelectorAll('.color-btn');
+        const gameCodeInput = document.getElementById('game-code-input');
+
 
         // Helper functions
         const showModal = (title, message) => {
@@ -382,6 +374,21 @@
                 menuMessage.classList.add('success');
             }
         };
+        
+        // Function to enable all interactive elements
+        const enableUI = () => {
+            menuButtons.forEach(btn => btn.disabled = false);
+            colorButtons.forEach(btn => btn.disabled = false);
+            gameCodeInput.disabled = false;
+        };
+        
+        // Function to disable all interactive elements
+        const disableUI = () => {
+            menuButtons.forEach(btn => btn.disabled = true);
+            colorButtons.forEach(btn => btn.disabled = true);
+            gameCodeInput.disabled = true;
+        };
+
 
         // Initialize board
         const initializeBoard = () => {
@@ -733,36 +740,57 @@
 
 
         // Firebase and Multiplayer Logic
-        const setupFirebase = async () => {
-            if (!firebaseConfig || Object.keys(firebaseConfig).length === 0) {
-                 updateMenuMessage("Firebase configuration is not available.", true);
-                 return;
+        const initFirebase = async () => {
+            let firebaseConfig;
+            try {
+                if (typeof __firebase_config === 'string' && __firebase_config.length > 0) {
+                    firebaseConfig = JSON.parse(__firebase_config);
+                } else {
+                    updateMenuMessage("Error: Firebase configuration is not available.", true);
+                    return;
+                }
+            } catch (error) {
+                updateMenuMessage("Error: Invalid Firebase configuration format.", true);
+                console.error("Firebase config parsing error:", error);
+                return;
             }
+
             try {
                 app = initializeApp(firebaseConfig);
                 auth = getAuth(app);
                 db = getFirestore(app);
 
-                const authPromise = initialAuthToken
-                    ? signInWithCustomToken(auth, initialAuthToken)
-                    : signInAnonymously(auth);
-                await authPromise;
-                
-                userId = auth.currentUser?.uid;
-                if (!userId) {
-                    throw new Error("Failed to get user ID after sign in.");
-                }
+                // Use onAuthStateChanged to handle authentication state changes
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        // User is signed in.
+                        userId = user.uid;
+                        isFirebaseReady = true;
+                        updateMenuMessage("Firebase connected. Choose your game mode.");
+                        enableUI();
+                        userInfoDisplay.textContent = `User ID: ${userId}`;
+                    } else {
+                        // User is signed out.
+                        userId = null;
+                        isFirebaseReady = false;
+                        updateMenuMessage("Signing in to Firebase...");
+                        disableUI();
+                        userInfoDisplay.textContent = "";
 
-                isFirebaseReady = true;
-                updateMenuMessage("Firebase connected. Choose your game mode.");
-                menuButtons.forEach(btn => btn.disabled = false);
-                userInfoDisplay.textContent = `User ID: ${userId}`;
-
+                        // Try to sign in with the custom token or anonymously
+                        if (initialAuthToken) {
+                           await signInWithCustomToken(auth, initialAuthToken);
+                        } else {
+                           await signInAnonymously(auth);
+                        }
+                    }
+                });
             } catch (error) {
                 console.error("Firebase initialization or auth failed:", error);
                 updateMenuMessage("Error: Authentication failed. Please try again.", true);
             }
         };
+
 
         const createGame = async (color) => {
             if (!isFirebaseReady) {
@@ -972,10 +1000,10 @@
         });
 
         // Initial setup
-        window.onload = () => {
-            setupFirebase();
+        document.addEventListener('DOMContentLoaded', () => {
+            initFirebase();
             resetGame();
-        };
+        });
 
     </script>
 </body>
