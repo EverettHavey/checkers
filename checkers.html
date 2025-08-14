@@ -83,7 +83,7 @@
 
         .menu-btn:active:not(:disabled), .game-btn:active:not(:disabled), .color-btn:active:not(:disabled) {
             transform: translateY(0);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
         }
 
         .input-group {
@@ -253,15 +253,15 @@
     <div id="app">
         <div id="main-menu" class="container">
             <h1>Checkers</h1>
-            <div class="message-box" id="menu-message">Connecting to Firebase...</div>
+            <div class="message-box" id="menu-message">Loading...</div>
 
-            <div class="color-selection">
+            <div class="color-selection" style="display: none;">
                 <button class="color-btn black selected" data-color="black" disabled>Black</button>
                 <button class="color-btn red" data-color="red" disabled>Red</button>
             </div>
             <button id="1-player-btn" class="menu-btn" disabled>1 Player (vs. Bot)</button>
             <button id="2-player-btn" class="menu-btn" disabled>2 Players (Create Game)</button>
-            <div class="input-group">
+            <div class="input-group" style="display: none;">
                 <input type="text" id="game-code-input" placeholder="Enter game code" disabled>
                 <button id="join-game-btn" class="menu-btn" disabled>Join Game</button>
             </div>
@@ -296,7 +296,15 @@
         // Firebase variables and initialization
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        
+        let firebaseConfig = null;
+        try {
+            if (typeof __firebase_config === 'string' && __firebase_config.length > 0) {
+                firebaseConfig = JSON.parse(__firebase_config);
+            }
+        } catch (error) {
+            console.error("Error parsing Firebase config:", error);
+        }
+
         let app, db, auth;
         let userId = null;
         let isFirebaseReady = false;
@@ -341,6 +349,8 @@
         const userInfoDisplay = document.getElementById('user-info');
         const menuButtons = document.querySelectorAll('.menu-btn');
         const colorButtons = document.querySelectorAll('.color-btn');
+        const inputGroup = document.querySelector('.input-group');
+        const colorSelection = document.querySelector('.color-selection');
         const gameCodeInput = document.getElementById('game-code-input');
 
 
@@ -380,6 +390,8 @@
             menuButtons.forEach(btn => btn.disabled = false);
             colorButtons.forEach(btn => btn.disabled = false);
             gameCodeInput.disabled = false;
+            inputGroup.style.display = 'flex';
+            colorSelection.style.display = 'flex';
         };
         
         // Function to disable all interactive elements
@@ -741,17 +753,8 @@
 
         // Firebase and Multiplayer Logic
         const initFirebase = async () => {
-            let firebaseConfig;
-            try {
-                if (typeof __firebase_config === 'string' && __firebase_config.length > 0) {
-                    firebaseConfig = JSON.parse(__firebase_config);
-                } else {
-                    updateMenuMessage("Error: Firebase configuration is not available.", true);
-                    return;
-                }
-            } catch (error) {
-                updateMenuMessage("Error: Invalid Firebase configuration format.", true);
-                console.error("Firebase config parsing error:", error);
+            if (!firebaseConfig) {
+                updateMenuMessage("Error: Firebase configuration is not available.", true);
                 return;
             }
 
@@ -998,13 +1001,16 @@
                 btn.classList.add('selected');
             });
         });
-
-        // Initial setup
+        
+        // Initial setup on load
         document.addEventListener('DOMContentLoaded', () => {
-            initFirebase();
-            resetGame();
+            if (firebaseConfig) {
+                initFirebase();
+                resetGame();
+            } else {
+                updateMenuMessage("Error: Firebase configuration is not available.", true);
+            }
         });
-
     </script>
 </body>
 </html>
