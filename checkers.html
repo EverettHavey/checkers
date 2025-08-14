@@ -3,324 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Checkers Game</title>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
-
-        /* Base styling for the entire page */
-        body {
-            font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            flex-direction: column;
-            color: #333;
-            text-align: center;
-        }
-
-        /* Main container for the game and menu */
-        .container {
-            background-color: #ffffff;
-            padding: 30px;
-            border-radius: 16px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-            max-width: 95%;
-            width: 500px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 20px;
-        }
-        
-        #game-container, #main-menu {
-            display: none;
-            width: 100%;
-        }
-        
-        #main-menu.visible, #game-container.visible {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        /* Title styling */
-        h1 {
-            color: #2c3e50;
-            margin: 0;
-            font-size: 2.5rem;
-            font-weight: 700;
-        }
-
-        /* Game board and squares */
-        #game-board {
-            display: grid;
-            grid-template-columns: repeat(8, 1fr);
-            grid-template-rows: repeat(8, 1fr);
-            width: 100%;
-            max-width: 400px;
-            margin: 20px auto;
-            border: 5px solid #4a2c2a;
-            border-radius: 8px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-            aspect-ratio: 1 / 1;
-        }
-
-        .square {
-            width: 100%;
-            aspect-ratio: 1 / 1;
-            box-sizing: border-box;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            cursor: pointer;
-            position: relative;
-        }
-
-        /* Dark squares with a wood texture gradient */
-        .square.dark {
-            background: linear-gradient(to bottom right, #5d4037, #4a2c2a);
-        }
-
-        /* Light squares with a clean cream color */
-        .square.light {
-            background-color: #F8E8C0;
-        }
-
-        /* Pieces with a 3D-like spherical look */
-        .piece {
-            width: 80%;
-            height: 80%;
-            border-radius: 50%;
-            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.3), 0 5px 10px rgba(0, 0, 0, 0.2);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-weight: bold;
-            color: #fff;
-            transition: transform 0.2s ease-in-out;
-            user-select: none;
-            border: 2px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .piece.red {
-            background: radial-gradient(circle at top left, #ef5350, #d32f2f);
-        }
-
-        .piece.black {
-            background: radial-gradient(circle at top left, #5a5a5a, #333333);
-        }
-
-        /* King piece styling */
-        .king::after {
-            content: '★';
-            font-size: 2.5em;
-            color: gold;
-            text-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-        }
-
-        /* Selected piece visual feedback */
-        .piece.selected {
-            transform: scale(1.15) translateY(-5px);
-            box-shadow: 0 0 15px #2196f3, 0 5px 20px rgba(0, 0, 0, 0.3);
-            border: 3px solid #2196f3;
-        }
-
-        /* Highlighted squares for valid moves */
-        .square.highlight {
-            background-color: #81c784 !important;
-            box-shadow: inset 0 0 10px #4caf50;
-            border-radius: 8px;
-        }
-
-        /* Message box pop-up */
-        .message-box {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background-color: rgba(33, 150, 243, 0.95);
-            color: white;
-            padding: 30px 50px;
-            border-radius: 16px;
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
-            backdrop-filter: blur(5px);
-            z-index: 1000;
-            display: none;
-            flex-direction: column;
-            gap: 15px;
-            align-items: center;
-            font-size: 1.2rem;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
-        }
-
-        .message-box.show {
-            display: flex;
-        }
-
-        /* Player turn and info display */
-        .info-display {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            width: 100%;
-            padding: 10px;
-            border-radius: 8px;
-            background-color: #f7f9fc;
-            box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
-        }
-        
-        .player-turn, #turn-display, #timer-display {
-            font-size: 1.2rem;
-            font-weight: 700;
-        }
-
-        .timer-display {
-            color: #d32f2f;
-        }
-        
-        /* User ID text */
-        .user-id-display {
-            font-size: 0.8rem;
-            color: #666;
-            margin-top: 10px;
-            word-break: break-all;
-        }
-
-        /* Button styling */
-        .button-group, .game-buttons {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            flex-wrap: wrap;
-        }
-
-        .action-button {
-            background-color: #4CAF50;
-            background: linear-gradient(45deg, #4CAF50, #8bc34a);
-            color: white;
-            border: none;
-            padding: 12px 28px;
-            font-size: 1.1rem;
-            border-radius: 25px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 10px rgba(76, 175, 80, 0.3);
-            text-transform: uppercase;
-            font-weight: 700;
-            letter-spacing: 1px;
-        }
-
-        .action-button:hover {
-            background: linear-gradient(45deg, #388E3C, #689f38);
-            box-shadow: 0 6px 15px rgba(56, 142, 60, 0.4);
-            transform: translateY(-2px);
-        }
-
-        .action-button:active {
-            transform: scale(0.98);
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-        }
-        
-        .game-buttons button {
-            width: 100%;
-            max-width: 250px;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>Checkers</h1>
-        <div id="main-menu" class="visible">
-            <p>Choose your game mode:</p>
-            <div class="game-buttons">
-                <button class="action-button" id="single-player-btn">Single Player</button>
-                <button class="action-button" id="multi-player-btn">Multi Player</button>
-            </div>
-        </div>
-        <div id="game-container">
-            <div id="game-board"></div>
-            <div class="info-display">
-                <span id="turn-display"></span>
-                <span id="timer-display" class="timer-display"></span>
-            </div>
-            <div class="button-group">
-                <button class="action-button" onclick="backToMenu()">Back to Menu</button>
-            </div>
-            <div class="user-id-display" id="user-id-display"></div>
-        </div>
-    </div>
-    
-    <div class="message-box" id="message-box"></div>
-
+    <title>Multiplayer Checkers Game</title>
     <script type="module">
-        // Import Firebase modules. These are globally available in the canvas environment.
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, query, where, getDocs, addDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInWithCustomToken, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, query, where, addDoc, updateDoc, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Global variables provided by the canvas environment for Firebase setup.
+        // Global variables provided by the Canvas environment
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
+        // Initialize Firebase services
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        
         // Game state variables
+        let userId = null;
+        let username = 'Player';
+        let gameId = null;
         let board = [];
-        let currentPlayer = 'black'; // 'black' or 'red'
+        let currentPlayer = null;
         let selectedPiece = null;
         let isGameOver = false;
-        let gameMode = null; // 'single' or 'multi'
-        let timerInterval;
-        let timeLeft = 60; // 60 seconds per turn
-        let userId = null;
-        let gameId = null;
-        let playerColor = null; // 'black' or 'red' for the current user
-        let opponentUserId = null;
-        let canEndTurn = true;
-
-        // Firebase instances
-        let app, db, auth;
-
+        let isAnimating = false;
+        let playerColor = null;
+        let isBotGame = false;
+        let gameHistory = [];
+        const botName = 'Checkers Bot';
+        
         // Game UI elements
         const mainMenu = document.getElementById('main-menu');
         const gameContainer = document.getElementById('game-container');
         const boardElement = document.getElementById('game-board');
-        const userIdDisplay = document.getElementById('user-id-display');
         const messageBox = document.getElementById('message-box');
-        
-        // --- Firebase Initialization and Authentication ---
-        async function initializeFirebase() {
-            try {
-                if (Object.keys(firebaseConfig).length > 0) {
-                    app = initializeApp(firebaseConfig);
-                    db = getFirestore(app);
-                    auth = getAuth(app);
+        const waitingScreen = document.getElementById('waiting-screen');
+        const userIdDisplay = document.getElementById('user-id');
+        const usernameInput = document.getElementById('username-input');
+        const otherUsernameInput = document.getElementById('other-username-input');
+        const turnDisplay = document.getElementById('turn-display');
+        const undoButton = document.getElementById('undo-button');
 
-                    onAuthStateChanged(auth, async (user) => {
-                        if (user) {
-                            userId = user.uid;
-                            console.log("Authenticated with user ID:", userId);
-                            userIdDisplay.textContent = `Your ID: ${userId}`;
-                        } else {
-                            // If not authenticated, sign in with the provided custom token or anonymously.
-                            if (initialAuthToken) {
-                                await signInWithCustomToken(auth, initialAuthToken);
-                            } else {
-                                await signInAnonymously(auth);
-                            }
-                        }
-                    });
+        // --- Firebase Initialization and Authentication ---
+        async function initFirebase() {
+            try {
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
                 } else {
-                    console.error("Firebase config is not available. Please check the environment setup.");
+                    await signInAnonymously(auth);
                 }
+                
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        console.log("Firebase authenticated. User ID:", userId);
+                        updateUsernameDisplay();
+                    } else {
+                        console.log("No user signed in.");
+                    }
+                });
             } catch (error) {
-                console.error("Error initializing Firebase:", error);
+                console.error("Firebase Auth Error:", error);
+                showMessage("Authentication failed. Please try again later.", 5000);
             }
         }
 
@@ -330,16 +75,328 @@
         function showMessage(text, duration = 3000) {
             messageBox.textContent = text;
             messageBox.classList.add('show');
-            setTimeout(() => {
-                messageBox.classList.remove('show');
-            }, duration);
+            if (duration > 0) {
+                setTimeout(() => {
+                    messageBox.classList.remove('show');
+                }, duration);
+            }
         }
 
-        // Reset the game board to its initial state
-        function createBoard() {
+        // Show a loading/waiting screen
+        function showWaitingScreen(message) {
+            waitingScreen.style.display = 'flex';
+            document.getElementById('waiting-message').textContent = message;
+        }
+
+        // Hide the loading/waiting screen
+        function hideWaitingScreen() {
+            waitingScreen.style.display = 'none';
+        }
+
+        // Transition from main menu to game
+        function showGame() {
+            mainMenu.style.display = 'none';
+            gameContainer.style.display = 'flex';
+        }
+
+        // Transition back to main menu
+        function showMainMenu() {
+            mainMenu.style.display = 'flex';
+            gameContainer.style.display = 'none';
+        }
+        
+        // Update the username display
+        function updateUsernameDisplay() {
+            username = usernameInput.value.trim() || 'Player';
+            userIdDisplay.textContent = `Your username is: ${username}`;
+        }
+        
+        usernameInput.addEventListener('input', updateUsernameDisplay);
+
+        // Create a new multiplayer game
+        window.startNewGame = async function() {
+            if (!userId) {
+                showMessage("Authentication not ready. Please wait.");
+                return;
+            }
+            updateUsernameDisplay();
+            isBotGame = false;
+            undoButton.style.display = 'none';
+
+            try {
+                showWaitingScreen("Creating new game...");
+                const newGameRef = doc(collection(db, `artifacts/${appId}/public/data/games`));
+                const newGameId = newGameRef.id;
+                gameId = newGameId;
+
+                const initialBoard = createInitialBoard();
+                await setDoc(newGameRef, {
+                    player1: userId,
+                    player1Name: username,
+                    player2: null,
+                    player2Name: null,
+                    board: JSON.stringify(initialBoard),
+                    turn: 'black', // Black always goes first
+                    status: 'waiting',
+                    winner: null
+                });
+
+                showMessage("Game created! Waiting for another player...", 0);
+                showGame();
+                playerColor = 'black'; // Creator is always black
+                listenToGameChanges();
+            } catch (e) {
+                console.error("Error creating game:", e);
+                showMessage("Failed to create game. Please try again.", 5000);
+            } finally {
+                hideWaitingScreen();
+            }
+        }
+
+        // Join an existing multiplayer game
+        window.joinGame = async function() {
+            if (!userId) {
+                showMessage("Authentication not ready. Please wait.");
+                return;
+            }
+            updateUsernameDisplay();
+            isBotGame = false;
+            undoButton.style.display = 'none';
+            const otherUsername = otherUsernameInput.value.trim();
+            if (!otherUsername) {
+                showMessage("Please enter a username to join.", 3000);
+                return;
+            }
+
+            showWaitingScreen(`Searching for game by ${otherUsername}...`);
+            try {
+                const gamesRef = collection(db, `artifacts/${appId}/public/data/games`);
+                const q = query(gamesRef, where("player1Name", "==", otherUsername), where("status", "==", "waiting"));
+                const querySnapshot = await getDocs(q);
+
+                if (!querySnapshot.empty) {
+                    const gameDoc = querySnapshot.docs[0];
+                    gameId = gameDoc.id;
+                    const gameData = gameDoc.data();
+                    
+                    if (gameData.player2) {
+                        showMessage("That game is already full.", 3000);
+                        return;
+                    }
+                    
+                    await updateDoc(doc(db, `artifacts/${appId}/public/data/games`, gameId), {
+                        player2: userId,
+                        player2Name: username,
+                        status: 'in-progress'
+                    });
+
+                    showMessage("Joined game successfully! Starting game...", 0);
+                    showGame();
+                    playerColor = 'red'; // Joinee is always red
+                    listenToGameChanges();
+                } else {
+                    showMessage("No available game found with that username.", 5000);
+                }
+            } catch (e) {
+                console.error("Error joining game:", e);
+                showMessage("Failed to join game. Please check the username.", 5000);
+            } finally {
+                hideWaitingScreen();
+            }
+        }
+        
+        // Start a game against the bot
+        window.startBotGame = async function() {
+            if (!userId) {
+                showMessage("Authentication not ready. Please wait.");
+                return;
+            }
+            updateUsernameDisplay();
+            isBotGame = true;
+            undoButton.style.display = 'inline-block';
+
+            try {
+                showWaitingScreen("Starting game against the bot...");
+                const newGameRef = doc(collection(db, `artifacts/${appId}/public/data/games`));
+                const newGameId = newGameRef.id;
+                gameId = newGameId;
+
+                const initialBoard = createInitialBoard();
+                gameHistory = [JSON.parse(JSON.stringify(initialBoard))];
+
+                await setDoc(newGameRef, {
+                    player1: userId,
+                    player1Name: username,
+                    player2: 'bot',
+                    player2Name: botName,
+                    board: JSON.stringify(initialBoard),
+                    turn: 'black',
+                    status: 'in-progress',
+                    winner: null
+                });
+
+                showMessage("Game started against the bot!", 0);
+                showGame();
+                playerColor = 'black'; // Human player is always black
+                listenToGameChanges();
+            } catch (e) {
+                console.error("Error starting bot game:", e);
+                showMessage("Failed to start bot game. Please try again.", 5000);
+            } finally {
+                hideWaitingScreen();
+            }
+        }
+        
+        // Undo the last move (bot games only)
+        window.undoMove = async function() {
+            if (!isBotGame || gameHistory.length < 2 || isAnimating) {
+                return;
+            }
+            isAnimating = true;
+            
+            // Pop the current state and the last move state
+            gameHistory.pop(); // Remove the current state
+            const prevBoard = gameHistory.pop(); // Get the state before the last human move
+            
+            // Push it back so we have a base state to go back to next undo
+            gameHistory.push(prevBoard);
+
+            board = JSON.parse(JSON.stringify(prevBoard));
+            selectedPiece = null;
+            clearHighlights();
+            renderBoard();
+
+            // The turn should be black as we are undoing the bot's move
+            const gameRef = doc(db, `artifacts/${appId}/public/data/games`, gameId);
+            await updateDoc(gameRef, {
+                board: JSON.stringify(board),
+                turn: 'black'
+            });
+            
+            isAnimating = false;
+        }
+
+        // Listen for real-time updates to the game document
+        function listenToGameChanges() {
+            const gameRef = doc(db, `artifacts/${appId}/public/data/games`, gameId);
+            onSnapshot(gameRef, (doc) => {
+                if (doc.exists()) {
+                    const data = doc.data();
+                    const newBoard = JSON.parse(data.board);
+                    
+                    // Only update history and board if it's a new move
+                    if (JSON.stringify(newBoard) !== JSON.stringify(board)) {
+                        board = newBoard;
+                        currentPlayer = data.turn;
+                        isGameOver = data.winner !== null;
+                        
+                        if(isBotGame) {
+                            gameHistory.push(JSON.parse(JSON.stringify(board)));
+                        }
+                    }
+
+                    if (data.status === 'waiting' && data.player2) {
+                         showMessage("Game has started!", 3000);
+                    }
+                    if (isGameOver) {
+                        endGame(data.winner);
+                    } else {
+                        renderBoard();
+                        updateTurnDisplay(data.player1Name, data.player2Name);
+                        // Check if it's the bot's turn
+                        if (data.player2 === 'bot' && currentPlayer === 'red') {
+                             setTimeout(makeBotMove, 1000); // 1-second delay for bot move
+                        }
+                    }
+                } else {
+                    showMessage("Game not found or has ended.", 5000);
+                    showMainMenu();
+                    gameId = null;
+                    resetLocalState();
+                }
+            });
+        }
+        
+        // Bot logic to make a move
+        async function makeBotMove() {
+            if (isAnimating) return; // Prevent bot from moving while animation is in progress
+            
+            isAnimating = true;
+            
+            const botPieces = [];
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const piece = board[r][c];
+                    if (piece && piece.color === 'red') {
+                        botPieces.push({ row: r, col: c });
+                    }
+                }
+            }
+
+            let availableMoves = [];
+            let availableJumps = [];
+
+            for (const piece of botPieces) {
+                const jumps = getAllPossibleJumps(piece.row, piece.col);
+                if (jumps.length > 0) {
+                    availableJumps.push(...jumps);
+                }
+                const moves = getAllPossibleMoves(piece.row, piece.col);
+                if (moves.length > 0) {
+                    availableMoves.push(...moves);
+                }
+            }
+
+            let move = null;
+            if (availableJumps.length > 0) {
+                // Prioritize jumps
+                move = availableJumps[Math.floor(Math.random() * availableJumps.length)];
+            } else if (availableMoves.length > 0) {
+                // Otherwise, pick a random simple move
+                move = availableMoves[Math.floor(Math.random() * availableMoves.length)];
+            }
+            
+            if (move) {
+                await movePiece(move.startRow, move.startCol, move.endRow, move.endCol);
+                
+                // If the move was a jump, check for further jumps
+                if (Math.abs(move.endRow - move.startRow) === 2) {
+                    const nextJumps = getAllPossibleJumps(move.endRow, move.endCol);
+                    if (nextJumps.length > 0) {
+                        isAnimating = false;
+                        setTimeout(makeBotMove, 1000); // Wait for another jump
+                        return;
+                    }
+                }
+                
+                if (checkWinCondition()) {
+                    updateGameState('red'); // Bot wins
+                } else {
+                    updateGameState();
+                }
+            }
+            
+            isAnimating = false;
+        }
+
+        // Reset the local game state for a new game
+        function resetLocalState() {
             board = [];
+            currentPlayer = null;
+            selectedPiece = null;
+            isGameOver = false;
+            isAnimating = false;
+            playerColor = null;
+            isBotGame = false;
+            gameHistory = [];
+            renderBoard();
+            undoButton.style.display = 'none';
+        }
+
+        function createInitialBoard() {
+            const initialBoard = [];
             for (let i = 0; i < 8; i++) {
-                board.push([]);
+                initialBoard.push([]);
                 for (let j = 0; j < 8; j++) {
                     let piece = null;
                     if (i < 3 && (i + j) % 2 !== 0) {
@@ -347,9 +404,10 @@
                     } else if (i > 4 && (i + j) % 2 !== 0) {
                         piece = { color: 'black', king: false };
                     }
-                    board[i].push(piece);
+                    initialBoard[i].push(piece);
                 }
             }
+            return initialBoard;
         }
 
         // Render the board to the DOM
@@ -373,154 +431,43 @@
                 }
             }
         }
-
-        // Start the game
-        async function startGame(mode) {
-            mainMenu.classList.remove('visible');
-            gameContainer.classList.add('visible');
-            isGameOver = false;
-            canEndTurn = true;
-            gameMode = mode;
-            createBoard();
-            renderBoard();
-
-            if (mode === 'single') {
-                playerColor = 'black';
-                currentPlayer = 'black';
-                document.getElementById('turn-display').textContent = 'Your Turn';
-                startTimer();
-            } else if (mode === 'multi') {
-                if (!userId) {
-                    showMessage("Authenticating...");
-                    return;
-                }
-                showMessage("Looking for an opponent...");
-                await joinOrCreateGame();
-                console.log(`Multiplayer game started. Game ID: ${gameId}, Player Color: ${playerColor}`);
-            }
-        }
-        
-        async function joinOrCreateGame() {
-            const gamesRef = collection(db, `artifacts/${appId}/public/data/checkers_games`);
-            const q = query(gamesRef, where("status", "==", "waiting"));
-            const querySnapshot = await getDocs(q);
-            
-            let foundGame = false;
-            if (!querySnapshot.empty) {
-                // Join an existing waiting game
-                querySnapshot.forEach(async (doc) => {
-                    const gameData = doc.data();
-                    if (gameData.player1 !== userId) {
-                        gameId = doc.id;
-                        playerColor = 'red'; // Second player is always red
-                        opponentUserId = gameData.player1;
-                        await setDoc(doc.ref, { player2: userId, status: "playing" }, { merge: true });
-                        setupRealtimeListener();
-                        showMessage("Game started! You are Red.");
-                        userIdDisplay.style.display = 'block';
-                        userIdDisplay.textContent = `Your ID: ${userId}. Opponent's ID: ${opponentUserId}`;
-                        foundGame = true;
-                    }
-                });
-            }
-            
-            if (!foundGame) {
-                // Create a new game
-                playerColor = 'black'; // First player is always black
-                const newGameRef = await addDoc(gamesRef, {
-                    player1: userId,
-                    player2: null,
-                    status: "waiting",
-                    board: JSON.stringify(board),
-                    currentPlayer: 'black'
-                });
-                gameId = newGameRef.id;
-                showMessage("Waiting for an opponent. Share your ID.");
-                userIdDisplay.style.display = 'block';
-                userIdDisplay.textContent = `Your ID: ${userId}. Waiting for opponent...`;
-                setupRealtimeListener();
-            }
-        }
-        
-        function setupRealtimeListener() {
-            const gameRef = doc(db, `artifacts/${appId}/public/data/checkers_games`, gameId);
-            onSnapshot(gameRef, (doc) => {
-                const gameData = doc.data();
-                if (gameData) {
-                    if (gameData.player2 && !opponentUserId) {
-                        opponentUserId = gameData.player2;
-                        userIdDisplay.textContent = `Your ID: ${userId}. Opponent's ID: ${opponentUserId}`;
-                        showMessage("Opponent joined! Game is starting.");
-                    }
-                    if (gameData.status === "playing") {
-                        board = JSON.parse(gameData.board);
-                        currentPlayer = gameData.currentPlayer;
-                        renderBoard();
-                        updateTurnDisplay();
-                        // Reset timer on turn change
-                        startTimer();
-                        if (isGameOver) {
-                            return;
-                        }
-                        
-                        // Check for winner after a move
-                        if(checkWinCondition()) {
-                            endGame();
-                        }
-                    }
-                }
-            });
-        }
-        
-        // Update the Firebase document with the current game state
-        async function updateGameInFirestore() {
-            if (gameId) {
-                const gameRef = doc(db, `artifacts/${appId}/public/data/checkers_games`, gameId);
-                await updateDoc(gameRef, {
-                    board: JSON.stringify(board),
-                    currentPlayer: currentPlayer
-                });
-            }
-        }
         
         // Logic for handling a square click
         async function handleSquareClick(row, col) {
-            if (isGameOver || (gameMode === 'multi' && currentPlayer !== playerColor) || !canEndTurn) {
+            if (isGameOver || isAnimating || currentPlayer !== playerColor) {
                 return;
             }
-
             const piece = board[row][col];
             
             // If a piece is selected and the new click is a valid move
             if (selectedPiece && canMove(selectedPiece.row, selectedPiece.col, row, col)) {
-                const isJump = movePiece(selectedPiece.row, selectedPiece.col, row, col);
+                isAnimating = true;
+                clearHighlights();
+
+                const isJump = await movePiece(selectedPiece.row, selectedPiece.col, row, col);
                 
                 // If a jump was made, check for further jumps from the new position
                 if (isJump) {
                     selectedPiece = { row, col, ...board[row][col] };
                     const nextJumps = getAllPossibleJumps(row, col);
                     if (nextJumps.length > 0) {
-                        // Keep the turn active and highlight next jumps
-                        canEndTurn = false;
-                        clearHighlights();
                         highlightMoves(nextJumps);
+                        isAnimating = false; // Allow the user to select the next jump
                         return; // Exit without switching turn
                     }
                 }
-
-                // If no jump was made or no more jumps are available, end the turn
-                selectedPiece = null;
-                clearHighlights();
-                canEndTurn = true;
                 
-                // End the game if a player wins
+                // If no jump was made or no more jumps are available, end the turn and update DB
+                selectedPiece = null;
+                isAnimating = false;
+                
                 if(checkWinCondition()){
-                    endGame();
+                    updateGameState(playerColor);
                 } else {
-                    switchTurn();
+                    updateGameState();
                 }
                 
-            } else if (piece && piece.color === currentPlayer) {
+            } else if (piece && piece.color === playerColor) {
                 // Select a new piece if it's the current player's turn
                 selectedPiece = { row, col, ...piece };
                 clearHighlights();
@@ -528,6 +475,19 @@
             }
         }
 
+        // Update game state in Firestore
+        async function updateGameState(winner = null) {
+            if (!gameId) return;
+            const gameRef = doc(db, `artifacts/${appId}/public/data/games`, gameId);
+            const nextTurn = currentPlayer === 'black' ? 'red' : 'black';
+            const boardData = JSON.stringify(board);
+            await updateDoc(gameRef, {
+                board: boardData,
+                turn: nextTurn,
+                winner: winner
+            });
+        }
+        
         // Clear all highlighted squares
         function clearHighlights() {
             document.querySelectorAll('.square.highlight').forEach(square => {
@@ -557,11 +517,21 @@
                 // Check for jump moves
                 const jumpRow = row + 2 * dr;
                 const jumpCol = col + 2 * dc;
-                if (isValidPosition(jumpRow, jumpCol) && !board[jumpRow][jumpCol] && board[newRow][newCol] && board[newRow][newCol].color !== piece.color) {
-                    moves.push({ startRow: row, startCol: col, endRow: jumpRow, endCol: jumpCol });
+                if (isValidPosition(jumpRow, jumpCol) && !board[jumpRow][jumpCol]) {
+                    const jumpedRow = row + dr;
+                    const jumpedCol = col + dc;
+                    const jumpedPiece = board[jumpedRow][jumpedCol];
+                    if(jumpedPiece && jumpedPiece.color !== piece.color){
+                         moves.push({ startRow: row, startCol: col, endRow: jumpRow, endCol: jumpCol });
+                    }
                 }
             }
             return moves;
+        }
+        
+        // Check if a position is on the board
+        function isValidPosition(row, col) {
+            return row >= 0 && row < 8 && col >= 0 && col < 8;
         }
 
         // Get all possible jump moves for a piece
@@ -618,7 +588,7 @@
         // Check if a move is valid
         function canMove(startRow, startCol, endRow, endCol) {
             const piece = board[startRow][startCol];
-            if (!piece || board[endRow][endCol]) {
+            if (!piece || board[endRow][endCol] || piece.color !== playerColor) {
                 return false;
             }
 
@@ -643,55 +613,68 @@
                 const jumpedRow = startRow + rowDiff / 2;
                 const jumpedCol = startCol + (endCol - startCol) / 2;
                 const jumpedPiece = board[jumpedRow][jumpedCol];
-                return jumpedPiece && jumpedPiece.color !== currentPlayer;
+                return jumpedPiece && jumpedPiece.color !== playerColor;
             }
             
             return false;
         }
 
         // Execute a move on the board and return true if it was a jump
-        function movePiece(startRow, startCol, endRow, endCol) {
-            const piece = board[startRow][startCol];
-            board[endRow][endCol] = piece;
-            board[startRow][startCol] = null;
+        async function movePiece(startRow, startCol, endRow, endCol) {
+            const startSquare = document.querySelector(`[data-row="${startRow}"][data-col="${startCol}"]`);
+            const pieceElement = startSquare.querySelector('.piece');
             
-            let isJump = false;
-            // Check for jump and remove jumped piece
-            const rowDiff = endRow - startRow;
-            const colDiff = Math.abs(endCol - startCol);
-            if (colDiff === 2) {
-                const jumpedRow = startRow + rowDiff / 2;
-                const jumpedCol = startCol + (endCol - startCol) / 2;
-                board[jumpedRow][jumpedCol] = null;
-                isJump = true;
-            }
+            // Get the size of a square to calculate the transform
+            const squareSize = startSquare.offsetWidth;
 
-            // Check for kinging
-            if ((piece.color === 'red' && endRow === 7) || (piece.color === 'black' && endRow === 0)) {
-                board[endRow][endCol].king = true;
-            }
-            
-            renderBoard();
-            return isJump;
-        }
+            // Calculate translation distance based on square size
+            const dx = (endCol - startCol) * squareSize;
+            const dy = (endRow - startRow) * squareSize;
 
-        // Switch the turn to the other player
-        function switchTurn() {
-            currentPlayer = currentPlayer === 'black' ? 'red' : 'black';
-            updateTurnDisplay();
-            startTimer();
-            if (gameMode === 'multi') {
-                updateGameInFirestore();
-            } else if (gameMode === 'single' && currentPlayer === 'red') {
-                setTimeout(botMove, 1000);
-            }
+            // Add 'moving' class to increase z-index and apply transform
+            pieceElement.classList.add('moving');
+            pieceElement.style.transform = `translate(${dx}px, ${dy}px) scale(1.15)`;
+
+            // Wait for the transition to finish
+            return new Promise(resolve => {
+                pieceElement.addEventListener('transitionend', (e) => {
+                    if (e.propertyName !== 'transform') return;
+
+                    // Update the board state after animation completes
+                    const piece = board[startRow][startCol];
+                    board[endRow][endCol] = piece;
+                    board[startRow][startCol] = null;
+                    
+                    let isJump = false;
+                    const rowDiff = endRow - startRow;
+                    const colDiff = Math.abs(endCol - startCol);
+                    if (colDiff === 2) {
+                        const jumpedRow = startRow + rowDiff / 2;
+                        const jumpedCol = startCol + (endCol - startCol) / 2;
+                        board[jumpedRow][jumpedCol] = null;
+                        isJump = true;
+                    }
+
+                    // Check for kinging
+                    if ((piece.color === 'red' && endRow === 7) || (piece.color === 'black' && endRow === 0)) {
+                        board[endRow][endCol].king = true;
+                    }
+
+                    // Re-render to reflect the final state and remove animating pieces
+                    renderBoard();
+                    resolve(isJump);
+                }, { once: true });
+            });
         }
         
-        function updateTurnDisplay() {
-            const turnText = gameMode === 'multi'
-                ? (currentPlayer === playerColor ? 'Your Turn' : `Opponent's Turn`)
-                : (currentPlayer === 'black' ? 'Your Turn' : 'Bot\'s Turn');
-            document.getElementById('turn-display').textContent = turnText;
+        function updateTurnDisplay(player1Name, player2Name) {
+            let turnText = '';
+            if (currentPlayer === playerColor) {
+                turnText = `Your Turn (${currentPlayer})`;
+            } else {
+                turnText = `${currentPlayer === 'black' ? player1Name : player2Name}'s Turn (${currentPlayer})`;
+            }
+            turnDisplay.textContent = turnText;
         }
 
         // Check if the game is over
@@ -711,126 +694,344 @@
         }
 
         // End the game and display the winner
-        function endGame(timeout = false) {
+        function endGame(winner) {
             isGameOver = true;
-            clearInterval(timerInterval);
-            let winner = '';
-            if (timeout) {
-                winner = currentPlayer === 'black' ? 'Red' : 'Black';
-                showMessage(`Time's up! ${winner} wins!`, 5000);
-            } else {
-                winner = currentPlayer === 'black' ? 'Black' : 'Red';
-                showMessage(`${winner} wins!`, 5000);
-            }
+            let winnerText = winner === 'red' ? 'Red' : 'Black';
+            showMessage(`${winnerText} wins!`, 0);
 
             // Display a restart button
             const restartBtn = document.createElement('button');
-            restartBtn.textContent = 'Play Again';
+            restartBtn.textContent = 'Back to Menu';
             restartBtn.className = 'action-button';
-            restartBtn.onclick = () => {
-                backToMenu();
-            };
+            restartBtn.onclick = resetGame;
             messageBox.appendChild(restartBtn);
             messageBox.classList.add('show');
         }
 
-        // --- Bot Logic (Simple AI) ---
-        function botMove() {
-            console.log("Bot's turn. Looking for moves...");
-            let allMoves = [];
-            let jumpMoves = [];
-            for (let i = 0; i < 8; i++) {
-                for (let j = 0; j < 8; j++) {
-                    const piece = board[i][j];
-                    if (piece && piece.color === 'red') {
-                        allMoves = allMoves.concat(getAllPossibleMoves(i, j));
-                        jumpMoves = jumpMoves.concat(getAllPossibleJumps(i,j));
-                    }
-                }
-            }
-            
-            let move;
-            if (jumpMoves.length > 0) {
-                // If jumps are available, the bot prioritizes them
-                move = jumpMoves[Math.floor(Math.random() * jumpMoves.length)];
-                const jumped = movePiece(move.startRow, move.startCol, move.endRow, move.endCol);
-
-                // Check for subsequent jumps
-                if (jumped) {
-                    let currentPosition = { row: move.endRow, col: move.endCol };
-                    let nextJumps = getAllPossibleJumps(currentPosition.row, currentPosition.col);
-                    while (nextJumps.length > 0) {
-                        const nextMove = nextJumps[Math.floor(Math.random() * nextJumps.length)];
-                        movePiece(currentPosition.row, currentPosition.col, nextMove.endRow, nextMove.endCol);
-                        currentPosition = { row: nextMove.endRow, col: nextMove.endCol };
-                        nextJumps = getAllPossibleJumps(currentPosition.row, currentPosition.col);
-                    }
-                }
-            } else if (allMoves.length > 0) {
-                // Otherwise, make a random normal move
-                move = allMoves[Math.floor(Math.random() * allMoves.length)];
-                movePiece(move.startRow, move.startCol, move.endRow, move.endCol);
-            } else {
-                console.log("Bot has no moves. Ending game.");
-                endGame();
-                return;
-            }
-
-            if (checkWinCondition()) {
-                endGame();
-            } else {
-                switchTurn();
-            }
+        // Reset the game
+        function resetGame() {
+            messageBox.classList.remove('show');
+            messageBox.innerHTML = '';
+            showMainMenu();
         }
-
-
-        // --- Helper Functions ---
-        function isValidPosition(row, col) {
-            return row >= 0 && row < 8 && col >= 0 && col < 8;
-        }
-
-        // --- Timer Functions ---
-        function startTimer() {
-            clearInterval(timerInterval);
-            timeLeft = 60;
-            document.getElementById('timer-display').textContent = `Time Left: ${timeLeft}`;
-            timerInterval = setInterval(() => {
-                timeLeft--;
-                document.getElementById('timer-display').textContent = `Time Left: ${timeLeft}`;
-                if (timeLeft <= 0) {
-                    endGame(true);
-                }
-            }, 1000);
-        }
-
-        // Back to Menu function
-        function backToMenu() {
-            localStorage.removeItem('gameMode');
-            window.location.reload();
-        }
-
-        // --- Event Listeners for menu buttons ---
-        document.getElementById('single-player-btn').addEventListener('click', () => {
-            localStorage.setItem('gameMode', 'single');
-            startGame('single');
-        });
-
-        document.getElementById('multi-player-btn').addEventListener('click', () => {
-            localStorage.setItem('gameMode', 'multi');
-            startGame('multi');
-        });
 
         // Initial setup
-        window.onload = async () => {
-            await initializeFirebase();
-            const savedGameMode = localStorage.getItem('gameMode');
-            if (savedGameMode) {
-                startGame(savedGameMode);
-            } else {
-                mainMenu.classList.add('visible');
-            }
-        };
+        window.onload = () => {
+            initFirebase();
+            showMainMenu();
+        }
 
     </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+
+        /* Base styling for the entire page */
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            flex-direction: column;
+            color: #333;
+            text-align: center;
+        }
+
+        /* Main container for the game */
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            max-width: 95%;
+            width: 500px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        #game-container {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+
+        #main-menu {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            gap: 20px;
+        }
+
+        #waiting-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            color: white;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            font-size: 1.5rem;
+            z-index: 999;
+        }
+        
+        /* Title styling */
+        h1 {
+            color: #2c3e50;
+            margin: 0;
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+
+        /* Game board and squares */
+        #game-board {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+            width: 100%;
+            max-width: 400px;
+            margin: 20px auto;
+            border: 5px solid #4a2c2a;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            aspect-ratio: 1 / 1;
+        }
+
+        .square {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            box-sizing: border-box;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            position: relative;
+        }
+
+        /* Dark squares with a wood texture gradient */
+        .square.dark {
+            background: linear-gradient(to bottom right, #5d4037, #4a2c2a);
+        }
+
+        /* Light squares with a clean cream color */
+        .square.light {
+            background-color: #F8E8C0;
+        }
+
+        /* Pieces with a 3D-like spherical look */
+        .piece {
+            width: 80%;
+            height: 80%;
+            border-radius: 50%;
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.3), 0 5px 10px rgba(0, 0, 0, 0.2);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            color: #fff;
+            transition: transform 0.3s ease-in-out; /* Added a smooth transition */
+            user-select: none;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            z-index: 10;
+        }
+
+        .piece.red {
+            background: radial-gradient(circle at top left, #ef5350, #d32f2f);
+        }
+
+        .piece.black {
+            background: radial-gradient(circle at top left, #5a5a5a, #333333);
+        }
+
+        /* King piece styling */
+        .king::after {
+            content: '★';
+            font-size: 2.5em;
+            color: gold;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        /* Selected piece visual feedback */
+        .piece.selected {
+            transform: scale(1.15) translateY(-5px);
+            box-shadow: 0 0 15px #2196f3, 0 5px 20px rgba(0, 0, 0, 0.3);
+            border: 3px solid #2196f3;
+        }
+        
+        /* Piece moving state for animation */
+        .piece.moving {
+            z-index: 20;
+            position: relative;
+        }
+
+        /* Highlighted squares for valid moves */
+        .square.highlight {
+            background-color: #81c784 !important;
+            box-shadow: inset 0 0 10px #4caf50;
+            border-radius: 8px;
+        }
+
+        /* Message box pop-up */
+        .message-box {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(33, 150, 243, 0.95);
+            color: white;
+            padding: 30px 50px;
+            border-radius: 16px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            display: none;
+            flex-direction: column;
+            gap: 15px;
+            align-items: center;
+            font-size: 1.2rem;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+        }
+
+        .message-box.show {
+            display: flex;
+        }
+
+        /* Player turn and info display */
+        .info-display {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            background-color: #f7f9fc;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .player-turn, #turn-display, #user-id {
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+
+        #user-id {
+            font-size: 0.9rem;
+            font-weight: 400;
+            color: #777;
+            text-align: right;
+            align-self: flex-end;
+            word-break: break-all;
+        }
+        
+        /* Button styling */
+        .button-group, .game-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .menu-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 100%;
+        }
+
+        .action-button {
+            background-color: #4CAF50;
+            background: linear-gradient(45deg, #4CAF50, #8bc34a);
+            color: white;
+            border: none;
+            padding: 12px 28px;
+            font-size: 1.1rem;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 10px rgba(76, 175, 80, 0.3);
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 1px;
+            width: 100%;
+        }
+
+        .action-button:hover {
+            background: linear-gradient(45deg, #388E3C, #689f38);
+            box-shadow: 0 6px 15px rgba(56, 142, 60, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .action-button:active {
+            transform: scale(0.98);
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 100%;
+        }
+
+        .input-group input {
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            font-size: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Multiplayer Checkers</h1>
+        
+        <div id="user-id"></div>
+
+        <!-- Main Menu -->
+        <div id="main-menu">
+            <p>Welcome! Please enter your username and choose an option.</p>
+            <div class="input-group">
+                <input type="text" id="username-input" placeholder="Enter your username">
+            </div>
+            <div class="menu-buttons">
+                <button class="action-button" onclick="startNewGame()">Start a New Game (as Black)</button>
+                <div class="input-group">
+                    <input type="text" id="other-username-input" placeholder="Enter your friend's username">
+                    <button class="action-button" onclick="joinGame()">Join Game (as Red)</button>
+                </div>
+                <button class="action-button" onclick="startBotGame()">Play against Bot</button>
+            </div>
+        </div>
+
+        <!-- Game Interface -->
+        <div id="game-container">
+            <div id="game-board"></div>
+            <div class="info-display">
+                <span id="turn-display"></span>
+            </div>
+            <div class="button-group">
+                <button class="action-button" onclick="undoMove()" id="undo-button">Undo Move</button>
+                <button class="action-button" onclick="resetGame()">Back to Menu</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="message-box" id="message-box"></div>
+    <div class="message-box" id="waiting-screen">
+        <p id="waiting-message">Waiting for another player...</p>
+    </div>
+
 </body>
 </html>
