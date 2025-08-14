@@ -290,7 +290,17 @@
 
         // Firebase variables and initialization
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = (typeof __firebase_config === 'string' && __firebase_config.length > 0) ? JSON.parse(__firebase_config) : {};
+        let firebaseConfig = null;
+        try {
+            // Safely parse the Firebase config string, or default to an empty object
+            firebaseConfig = (typeof __firebase_config === 'string' && __firebase_config.length > 0)
+                ? JSON.parse(__firebase_config)
+                : {};
+        } catch (e) {
+            console.error("Error parsing Firebase configuration:", e);
+            firebaseConfig = {};
+        }
+        
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
         let app, db, auth;
@@ -727,7 +737,7 @@
 
         // Firebase and Multiplayer Logic
         const setupFirebase = async () => {
-            if (Object.keys(firebaseConfig).length === 0) {
+            if (!firebaseConfig || Object.keys(firebaseConfig).length === 0) {
                  showModal("Error", "Firebase configuration is not available.");
                  return;
             }
